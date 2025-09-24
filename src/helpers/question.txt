@@ -1,0 +1,4409 @@
+
+
+
+Follow these instructions only implement these as phase on backend by follow BACKEND GUIDANCE without skip any one and preserve functionalities of original codes 100% as origin, give me complete full functions of createLoanApplication and createCompleteLoanApplication without skip existing line and  enhance existing multer file to support new fields and give me full existing models/entity files with applied changes and original functionalities preserved 100% as origin::
+
+.
+
+## Backend Enhancement Instructions
+
+### Step 1: Organize Borrower Information Fields
+
+**What to Add:**
+
+1. **Place of National ID Provision**
+   - Add fields in BorrowerProfile entity:
+     - `nationalIdDistrict: string` - District where ID was issued
+     - `nationalIdSector: string` - Sector where ID was issued
+   - Create validation to ensure these fields use Rwanda location data
+   - Store as part of borrower's identification details
+
+2. **Parents Information**
+   - Add to BorrowerProfile entity:
+     - `motherFullName: string`
+     - `motherPlaceOfBirth: string` (with district/sector breakdown)
+     - `fatherFullName: string`
+     - `fatherPlaceOfBirth: string` (with district/sector breakdown)
+   - Store as JSONB for flexible address structure
+
+3. **Borrower Document Array**
+   - Create new interface `BorrowerDocument`:
+     ```
+     {
+       documentType: string (description of document)
+       documentUrl: string (file URL)
+       uploadedAt: Date
+       uploadedBy: number (user ID)
+     }
+     ```
+   - Add to BorrowerProfile: `borrowerDocuments: BorrowerDocument[]`
+   - Allow unlimited documents with description and file per entry
+   - Store as JSONB array in database
+
+### Step 2: Enhance Address & Employment Section
+
+**What to Change:**
+
+1. **Rename Section:**
+   - Keep the same tab but change display name from "Address & Employment" to "Address & Current Residence"
+
+2. **Add Payment Frequency Field:**
+   - Add to Loan entity: `paymentFrequency: RepaymentFrequency`
+   - This will be set during loan approval but display slot created now
+   - Make it nullable initially until approval stage
+
+### Step 3: Enhance Guarantor System
+
+**For Individual Borrowers:**
+
+1. **Keep Spouse Auto-Guarantor:**
+   - Maintain existing logic where married borrowers' spouses become guarantors automatically
+   - Spouse data saves to both spouseInfo and creates Guarantor record
+
+2. **Add Guarantor Documents Array:**
+   - Extend Guarantor entity with:
+   ```
+   guarantorDocuments: {
+     documentDescription: string
+     documentUrl: string
+     uploadedAt: Date
+   }[]
+   ```
+   - Store as JSONB array
+   - Allow unlimited document uploads per guarantor
+   - Each document has description field and file upload
+
+**For Institution Borrowers:**
+
+1. **Separate Shareholder and Board Member Entry:**
+   - Keep existing `shareholderBoardMembers` array
+   - In the UI, create separate "Add Shareholder" and "Add Board Member" buttons
+   - Backend logic remains the same (stores in same array with `type` field)
+   - Add fields to ShareholderBoardMemberInfo:
+     - For Shareholders: `rdbFullInformation: string` (URL)
+     - For Shareholders: `shareholderResolution: string` (URL)
+     - For Board Members: `boardResolution: string` (URL)
+
+2. **Add Document Array to Each Member:**
+   - Extend ShareholderBoardMemberInfo interface:
+   ```
+   additionalDocuments: {
+     description: string
+     fileUrl: string
+     uploadedAt: Date
+   }[]
+   ```
+   - Allow unlimited additional documents per member
+   - Each has description and file upload capability
+
+3. **Board Member as Guarantor Option:**
+   - Add checkbox field: `isAlsoGuarantor: boolean` to ShareholderBoardMemberInfo
+   - When checked and member is board member:
+     - Store in shareholderBoardMembers array as normal
+     - ALSO create Guarantor record automatically
+     - Link guarantor back to loan and collateral
+     - Display under Guarantor tab in UI
+
+### Step 4: Enhance Collateral Documents
+
+**What to Add:**
+
+1. **Dynamic Additional Document Array:**
+   - Already exists as `additionalDocumentsUrls` in LoanCollateral
+   - Enhance to store:
+   ```
+   {
+     description: string
+     fileUrl: string
+     documentType: string
+     uploadedAt: Date
+   }[]
+   ```
+   - Allow unlimited documents
+   - Each document has description textarea before upload
+
+### Step 5: Service Layer Enhancements
+
+**In LoanApplicationService:**
+
+1. **Add Method to Handle Borrower Documents:**
+   ```
+   async saveBorrowerDocuments(
+     borrowerId: number,
+     documents: Array<{description: string, file: File}>
+   ): Promise<BorrowerDocument[]>
+   ```
+   - Upload files to cloud storage
+   - Create document records with descriptions
+   - Return saved document array
+
+2. **Add Method to Handle Guarantor Documents:**
+   ```
+   async saveGuarantorDocuments(
+     guarantorId: number,
+     documents: Array<{description: string, file: File}>
+   ): Promise<void>
+   ```
+   - Similar to borrower documents
+   - Store in guarantor's document array
+
+3. **Add Method to Auto-Create Board Member as Guarantor:**
+   ```
+   async createBoardMemberAsGuarantor(
+     boardMember: ShareholderBoardMemberInfo,
+     loanId: number,
+     collateralId: number
+   ): Promise<Guarantor>
+   ```
+   - Check if `isAlsoGuarantor` flag is true
+   - Extract relevant data from board member
+   - Create Guarantor record
+   - Link to loan and collateral
+
+4. **Enhance createCompleteLoanApplication Method:**
+   - After creating borrower, process borrower documents
+   - After creating guarantors, process guarantor documents
+   - After creating shareholders/board members, check for guarantor flag
+   - If board member is guarantor, call createBoardMemberAsGuarantor
+
+### Step 6: Controller Layer Enhancements
+
+**In LoanApplicationController:**
+
+1. **Update File Upload Handling:**
+   - Add new multer fields:
+     - `borrowerDocuments` (unlimited)
+     - `guarantorDocuments` (unlimited per guarantor)
+     - `shareholderAdditionalDocs` (unlimited)
+     - `boardMemberAdditionalDocs` (unlimited)
+   
+2. **Parse Dynamic Document Arrays:**
+   - Extract document descriptions from form data
+   - Match descriptions with uploaded files
+   - Create array of {description, file} pairs
+
+3. **Handle Board Member Guarantor Flag:**
+   - Parse `isAlsoGuarantor` field for each shareholder/board member
+   - Pass to service layer for automatic guarantor creation
+
+---
+
+## Frontend Enhancement Instructions
+
+### Step 1: Reorganize Borrower Info Tab (Individual)
+
+**Tab Structure:**
+
+When user is on "Borrower Info" tab for INDIVIDUAL borrower, organize into sections:
+
+**Section 1: Personal Details**
+- Keep all existing fields (firstName, lastName, middleName, nationalId, dateOfBirth, gender, maritalStatus)
+- ADD NEW:
+  - "Place of National ID Issuance"
+    - District dropdown (Rwanda locations)
+    - Sector dropdown (Rwanda locations)
+
+**Section 2: Parents Information**
+- NEW collapsible section with heading "Parents Information"
+  - Mother's Full Name (text input)
+  - Mother's Place of Birth
+    - District dropdown
+    - Sector dropdown
+  - Father's Full Name (text input)
+  - Father's Place of Birth
+    - District dropdown
+    - Sector dropdown
+
+**Section 3: Contact Information**
+- Keep existing fields (primaryPhone, alternativePhone, email)
+
+**Section 4: Borrower Documents**
+- NEW dynamic section with "Add Document" button
+- Each document entry has:
+  - Document Description (textarea)
+  - File Upload button
+  - Remove button
+- Display list of added documents with description and filename
+- Allow unlimited document additions
+
+### Step 2: Enhance Institution Borrower Tab
+
+**When borrower type is INSTITUTION:**
+
+**Section 1: Institution Details**
+- Keep existing institution profile fields
+
+**Section 2: Institution Documents**
+- Keep existing RDB/RGB/RCA document uploads based on type
+
+### Step 3: Reorganize Address & Employment Tab
+
+**Rename tab to: "Address & Current Residence"**
+
+**Section 1: Current Address**
+- Keep all existing location fields (province, district, sector, cell, village)
+
+**Section 2: Employment/Business Details**
+- Keep conditional rendering based on borrower type
+- For INDIVIDUAL: occupation, monthly income, income source
+- For INSTITUTION: business type, economic sector
+
+**Section 3: Income Sources** (Individual only)
+- Keep existing dynamic income source array
+- Display as collapsible cards
+
+**Section 4: Payment Frequency**
+- ADD display field (read-only for now)
+- Show message: "Payment frequency will be set during loan approval"
+- Field: `paymentFrequency` (disabled dropdown showing options)
+
+### Step 4: Enhanced Guarantor Tab (Step 5)
+
+**For INDIVIDUAL Borrowers:**
+
+**Auto-Display Spouse:**
+- If married, show spouse information in highlighted card
+- Label as "Automatic Guarantor (Spouse)"
+- Non-editable (pulls from spouse info entered in step 1)
+
+**Additional Guarantors Section:**
+- Keep existing "Add Guarantor" functionality
+- For each guarantor, add subsection:
+  - "Guarantor Documents"
+  - Dynamic array of documents
+  - Each has: Description textarea + File upload button
+  - Display uploaded documents list
+  - Allow unlimited additions
+
+**For INSTITUTION Borrowers:**
+
+**Separate Buttons:**
+- "Add Shareholder" button (opens shareholder form only)
+- "Add Board Member" button (opens board member form only)
+
+**Shareholder Form Fields:**
+- Keep all existing fields (name, nationalId, phone, email, sharePercentage)
+- ADD:
+  - "RDB Full Information" file upload
+  - "Shareholder Resolution" file upload
+  - "Additional Documents" section (dynamic array with description + file)
+
+**Board Member Form Fields:**
+- Keep all existing fields (name, nationalId, phone, email, position)
+- ADD:
+  - "Board Resolution" file upload
+  - Checkbox: "This board member is also a guarantor"
+  - "Additional Documents" section (dynamic array with description + file)
+
+**Auto-Guarantor Display:**
+- Below shareholder/board member list
+- Show separate section: "Board Members as Guarantors"
+- Auto-populate with board members who have guarantor checkbox checked
+- Display their information in read-only guarantor cards
+- Show indicator that they're auto-created from board member data
+
+### Step 5: Enhance Collateral Tab (Step 4)
+
+**Existing Collateral Documents Section:**
+- Keep all existing uploads (proof of ownership, identification, etc.)
+
+**Add New Section: "Additional Collateral Documents"**
+- Dynamic array with "Add Document" button
+- Each entry has:
+  - Document Description (textarea) - user describes what this document is
+  - File Upload button
+  - Remove button
+- Display list of uploaded additional documents
+- Allow unlimited additions
+
+### Step 6: Form Validation Updates
+
+**Add validation rules for new fields:**
+
+1. **Borrower Info Validation:**
+   - National ID district: required if nationalId is provided
+   - National ID sector: required if nationalId is provided
+   - Parents info: optional but if one parent's name provided, their place of birth becomes required
+
+2. **Guarantor Documents:**
+   - If file uploaded, description is required
+   - If description provided, file is required
+
+3. **Shareholder/Board Member:**
+   - If "is also guarantor" checked, ensure all required guarantor fields present
+   - RDB Full Information required for shareholders
+   - Board Resolution required for board members
+
+### Step 7: State Management Updates
+
+**Add new state variables:**
+
+```javascript
+// Borrower documents
+const [borrowerDocuments, setBorrowerDocuments] = useState([]);
+
+// Parents information
+const [parentsInfo, setParentsInfo] = useState({
+  mother: { fullName: '', districtOfBirth: '', sectorOfBirth: '' },
+  father: { fullName: '', districtOfBirth: '', sectorOfBirth: '' }
+});
+
+// National ID location
+const [nationalIdLocation, setNationalIdLocation] = useState({
+  district: '',
+  sector: ''
+});
+
+// Guarantor documents per guarantor
+const [guarantorDocuments, setGuarantorDocuments] = useState({});
+
+// Shareholder additional documents
+const [shareholderDocuments, setShareholderDocuments] = useState({});
+
+// Board member additional documents
+const [boardMemberDocuments, setBoardMemberDocuments] = useState({});
+```
+
+### Step 8: Review Tab Updates (Step 6)
+
+**Enhance review section to show:**
+
+1. **Borrower Information Summary:**
+   - Add display of national ID issuance location
+   - Add parents information section
+   - Add list of borrower documents with descriptions
+
+2. **Guarantor Summary:**
+   - Show spouse as auto-guarantor (if applicable)
+   - List additional guarantors
+   - Show each guarantor's documents with descriptions
+   - For institutions: show board members marked as guarantors separately
+
+3. **Shareholder/Board Member Summary:**
+   - List all shareholders with their special documents
+   - List all board members with their special documents
+   - Indicate which board members are also guarantors
+
+4. **Documents Summary:**
+   - Add count of borrower-specific documents
+   - Add count of guarantor-specific documents
+   - Add count of shareholder/board member additional documents
+   - Show collateral additional documents count
+
+---
+
+## Implementation Workflow
+
+### Phase 1: Database Schema Updates
+1. Update BorrowerProfile entity with new fields
+2. Update Guarantor entity with documents array
+3. Update ShareholderBoardMemberInfo interface
+4. Run migrations
+
+### Phase 2: Backend Service Layer
+1. Implement document handling methods
+2. Update createCompleteLoanApplication method
+3. Add board-member-to-guarantor logic
+4. Test all new methods
+
+### Phase 3: Backend Controller Layer
+1. Update multer configuration for new file fields
+2. Add parsing logic for dynamic document arrays
+3. Update createLoanApplication endpoint
+4. Test file uploads
+
+### Phase 4: Frontend State & Validation
+1. Add new state variables
+2. Implement validation rules
+3. Create helper functions for document management
+4. Test state updates
+
+### Phase 5: Frontend UI Components
+1. Update Step 1 (Borrower Info) with new sections
+2. Update Step 2 (Address) with renamed sections
+3. Update Step 4 (Collateral) with additional docs
+4. Update Step 5 (Guarantor/Shareholder) with new structure
+5. Update Step 6 (Review) with new summaries
+
+### Phase 6: Integration Testing
+1. Test individual borrower flow end-to-end
+2. Test institution borrower flow end-to-end
+3. Test document uploads for all types
+4. Test board member to guarantor auto-creation
+5. Test all validation scenarios
+
+### Phase 7: UI/UX Polish
+1. Add loading states for document uploads
+2. Add success/error messages
+3. Ensure responsive design for all new sections
+4. Add helpful tooltips and hints
+5. Test on multiple devices
+
+---
+
+## Key Design Principles
+
+1. **Preserve 100% Original Functionality:**
+   - All existing fields remain functional
+   - No breaking changes to data structure
+   - Backward compatible with existing data
+
+2. **Clear Information Organization:**
+   - Related information grouped in logical sections
+   - Use collapsible sections for optional data
+   - Clear visual separation between different types of information
+
+3. **Intuitive Document Management:**
+   - Always pair description with file upload
+   - Show uploaded files immediately
+   - Easy removal of incorrect uploads
+   - Clear labeling of required vs optional documents
+
+4. **Smart Auto-Population:**
+   - Spouse automatically becomes guarantor for married borrowers
+   - Board members can opt-in to be guarantors
+   - No duplicate data entry required
+
+5. **Flexible but Structured:**
+   - Allow unlimited documents where needed
+   - Use arrays for repeating data
+   - Maintain data integrity through proper relationships
+
+Backend:::
+
+// @ts-nocheck
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import type { Request } from "express";
+import type { File } from "express";
+
+// Comprehensive list of allowed file extensions
+const allowedExtensions = {
+  images: [
+    ".jpg", ".jpeg", ".png", ".gif", ".tif", ".webp", 
+    ".bmp", ".svg", ".ico", ".heic", ".tiff", ".psd", 
+    ".ai", ".eps", ".raw", ".avif", ".jp2"
+  ],
+  audio: [
+    ".mp3", ".wav", ".flac", ".aac", ".ogg", ".wma", 
+    ".m4a", ".opus", ".aiff", ".alac", ".amr", ".mid", 
+    ".midi", ".mp2", ".mpa", ".ra", ".weba"
+  ],
+  video: [
+    ".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv", 
+    ".wmv", ".m4v", ".3gp", ".mpg", ".mpeg", ".m2v", 
+    ".m4p", ".m4v", ".mp2", ".mpe", ".mpv", ".mxf", 
+    ".nsv", ".ogv", ".qt", ".rm", ".rmvb", ".svi", 
+    ".vob", ".yuv"
+  ],
+  documents: [
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", 
+    ".pptx", ".txt", ".rtf", ".csv", ".zip", ".rar", 
+    ".7z", ".gz", ".tar", ".bz2", ".dmg", ".iso", 
+    ".epub", ".mobi", ".pages", ".numbers", ".key", 
+    ".odt", ".ods", ".odp", ".md", ".json", ".xml", 
+    ".html", ".htm", ".log", ".sql", ".db", ".dat", 
+    ".apk", ".exe", ".dll", ".msi"
+  ],
+  fonts: [
+    ".ttf", ".otf", ".woff", ".woff2", ".eot", ".sfnt"
+  ],
+  archives: [
+    ".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", 
+    ".xz", ".iso", ".dmg", ".pkg", ".deb", ".rpm"
+  ],
+  executables: [
+    ".exe", ".msi", ".dmg", ".pkg", ".deb", ".rpm", 
+    ".apk", ".app", ".bat", ".cmd", ".sh", ".bin"
+  ],
+  code: [
+    ".js", ".ts", ".jsx", ".tsx", ".py", ".java", 
+    ".c", ".cpp", ".h", ".cs", ".php", ".rb", 
+    ".go", ".swift", ".kt", ".scala", ".sh", ".pl", 
+    ".lua", ".sql", ".json", ".xml", ".yml", ".yaml", 
+    ".ini", ".cfg", ".conf", ".env"
+  ]
+};
+
+// Flatten all allowed extensions for quick lookup
+const allAllowedExtensions = [
+  ...allowedExtensions.images,
+  ...allowedExtensions.audio,
+  ...allowedExtensions.video,
+  ...allowedExtensions.documents,
+  ...allowedExtensions.fonts,
+  ...allowedExtensions.archives,
+  ...allowedExtensions.executables,
+  ...allowedExtensions.code
+];
+
+const ensureDirectoryExists = (dir: string) => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+};
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    let folder = "uploads/others";
+    
+    if (file.mimetype.startsWith("image/")) {
+      folder = "uploads/images";
+    } else if (file.mimetype.startsWith("audio/")) {
+      folder = "uploads/audio";
+    } else if (file.mimetype.startsWith("video/")) {
+      folder = "uploads/video";
+    } else if (file.mimetype.startsWith("text/") || 
+               file.mimetype.includes("document") || 
+               file.mimetype.includes("pdf")) {
+      folder = "uploads/documents";
+    } else if (file.mimetype.includes("font")) {
+      folder = "uploads/fonts";
+    } else if (file.mimetype.includes("zip") || 
+               file.mimetype.includes("compressed")) {
+      folder = "uploads/archives";
+    } else if (file.mimetype.includes("application/x-msdownload") || 
+               file.mimetype.includes("application/x-executable")) {
+      folder = "uploads/executables";
+    } else if (file.mimetype.includes("application/javascript") || 
+               file.mimetype.includes("text/x-")) {
+      folder = "uploads/code";
+    }
+
+    ensureDirectoryExists(folder);
+    cb(null, folder);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}${ext}`;
+    cb(null, fileName);
+  },
+});
+
+const fileFilter = (req: Request, file: File, cb: multer.FileFilterCallback) => {
+  const ext = path.extname(file.originalname).toLowerCase();
+  
+  if (allAllowedExtensions.includes(ext)) {
+    return cb(null, true);
+  }
+
+  const error = new Error(
+    `Invalid file type: ${ext}. Allowed types: ${Object.keys(allowedExtensions).join(", ")}.`
+  );
+  cb(error, false);
+};
+
+// Enhanced multer configuration with better limits
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB per file
+    files: 50, // Increased to support multiple document types
+    fieldSize: 10 * 1024 * 1024,
+  },
+});
+
+// Enhanced error handling middleware
+export const handleMulterError = (error: any, req: any, res: any, next: any) => {
+  if (error instanceof multer.MulterError) {
+    switch (error.code) {
+      case "LIMIT_FILE_SIZE":
+        return res.status(400).json({
+          success: false,
+          message: "File too large. Maximum size is 10MB per file.",
+          error: error.message,
+          details: `File '${error.field}' exceeded size limit`
+        });
+      case "LIMIT_FILE_COUNT":
+        return res.status(400).json({
+          success: false,
+          message: "Too many files. Maximum 50 files allowed.",
+          error: error.message,
+          details: `Limit exceeded for field '${error.field}'`
+        });
+      case "LIMIT_UNEXPECTED_FILE":
+        return res.status(400).json({
+          success: false,
+          message: "Unexpected file field.",
+          error: error.message,
+          details: `Field '${error.field}' was not expected`
+        });
+      case "LIMIT_FIELD_KEY":
+        return res.status(400).json({
+          success: false,
+          message: "Field name too long.",
+          error: error.message,
+          details: `Field name exceeds maximum length`
+        });
+      case "LIMIT_FIELD_VALUE":
+        return res.status(400).json({
+          success: false,
+          message: "Field value too large.",
+          error: error.message,
+          details: `Field '${error.field}' value exceeds size limit`
+        });
+      case "LIMIT_FIELD_COUNT":
+        return res.status(400).json({
+          success: false,
+          message: "Too many fields.",
+          error: error.message,
+          details: "Maximum number of fields exceeded"
+        });
+      case "LIMIT_PART_COUNT":
+        return res.status(400).json({
+          success: false,
+          message: "Too many parts.",
+          error: error.message,
+          details: "Maximum number of form parts exceeded"
+        });
+      default:
+        return res.status(400).json({
+          success: false,
+          message: "File upload error.",
+          error: error.message,
+          details: `Multer error code: ${error.code}`
+        });
+    }
+  }
+
+  if (error.message.includes("Invalid file type")) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+      error: "Invalid file type",
+      details: `Allowed types: ${Object.keys(allowedExtensions).join(", ")}`,
+      allowedExtensions: allowedExtensions
+    });
+  }
+
+  next(error);
+};
+
+// ✅ ENHANCED: Upload fields configuration for loan applications
+export const uploadFields = upload.fields([
+  // Standard document uploads
+  { name: "documents", maxCount: 10 },
+  { name: "document", maxCount: 10 },
+  { name: "images", maxCount: 5 },
+  { name: "attachments", maxCount: 10 },
+  { name: "videos", maxCount: 3 },
+  { name: "audio", maxCount: 5 },
+  { name: "fonts", maxCount: 5 },
+  { name: "archives", maxCount: 5 },
+  { name: "code", maxCount: 10 },
+  
+  // Profile uploads
+  { name: "profilePicture", maxCount: 1 },
+  { name: "employeeSignature", maxCount: 1 },
+  { name: "organizationLogoUrl", maxCount: 1 },
+  { name: "organizationLogo", maxCount: 1 },
+  
+  // HR/Employee documents
+  { name: "idProof", maxCount: 1 },
+  { name: "idProofDocument", maxCount: 1 },
+  { name: "cvDocument", maxCount: 1 },
+  { name: "appointmentLetter", maxCount: 1 },
+  { name: "qualificationCertificates", maxCount: 10 },
+  { name: "additionalDocuments", maxCount: 10 },
+  
+  // Organization documents
+  { name: "tradingLicense", maxCount: 1 },
+  { name: "paymentProof", maxCount: 1 },
+  { name: "agreementDocument", maxCount: 1 },
+  
+  // ========================================
+  // ✅ ENHANCED: Collateral Documents (up to 5 each)
+  // ========================================
+  { name: "proofOfOwnership", maxCount: 5 },
+  { name: "ownerIdentification", maxCount: 5 },
+  { name: "legalDocument", maxCount: 5 },
+  { name: "physicalEvidence", maxCount: 5 },
+  { name: "valuationReport", maxCount: 5 },
+  
+  // ========================================
+  // ✅ NEW: Guarantor Documents
+  // ========================================
+  { name: "guarantorIdentification", maxCount: 5 },
+  { name: "guarantorCrbReport", maxCount: 1 },
+  
+  // ========================================
+  // ✅ NEW: Borrower/Institution Documents
+  // ========================================
+  // Marriage-related documents
+  { name: "marriageCertificate", maxCount: 1 },
+  { name: "spouseCrbReport", maxCount: 1 },
+  { name: "spouseIdentification", maxCount: 1 },
+  
+  // Witness documents
+  { name: "witnessCrbReport", maxCount: 1 },
+  { name: "witnessIdentification", maxCount: 1 },
+  
+  // Institution documents (RDB, RGB, RCA)
+  { name: "institutionLegalDocument", maxCount: 1 }, // RDB for company
+  { name: "cooperativeLegalDocument", maxCount: 1 }, // RGB for cooperative
+  { name: "otherInstitutionLegalDocument", maxCount: 1 }, // RCA for other
+  { name: "institutionLicense", maxCount: 1 },
+  { name: "institutionTradingLicense", maxCount: 1 },
+  { name: "institutionRegistration", maxCount: 1 },
+  
+  // ========================================
+  // ✅ NEW: Additional Collateral Documents (Dynamic)
+  // ========================================
+  { name: "additionalCollateralDocs", maxCount: 10 },
+
+   { name: "shareholderIdentification", maxCount: 10 },
+  { name: "boardMemberIdentification", maxCount: 10 },
+  { name: "proofOfShares", maxCount: 10 },
+  { name: "boardResolution", maxCount: 5 },
+  { name: "shareholderCrbReport", maxCount: 10 },
+  { name: "boardMemberCrbReport", maxCount: 10 },
+]);
+
+// Specific configurations for different use cases
+export const uploadSingle = upload.single("document");
+export const uploadSingledocument = upload.single("attached_documents");
+export const uploadMultiple = upload.array("documents", 10);
+
+export const uploadShareholderDocument = upload.fields([
+  { name: "document", maxCount: 1 }, 
+  { name: "idProof", maxCount: 1 },
+  { name: "tradingLicense", maxCount: 1 },
+  { name: "paymentProof", maxCount: 1 },
+  { name: "agreementDocument", maxCount: 1 },
+  { name: "organizationLogo", maxCount: 1 },
+]);
+
+// Additional utility exports
+export const getAllowedExtensions = () => ({ ...allowedExtensions });
+export const isExtensionAllowed = (ext: string) => allAllowedExtensions.includes(ext.toLowerCase());
+
+export default upload;
+
+
+// @ts-nocheck
+import { v2 as cloudinary } from "cloudinary"
+import dotenv from "dotenv"
+import fs from 'fs';
+dotenv.config()
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  timeout: 120000,
+})
+
+export const UploadToCloud = async (file: Express.Multer.File, res?: Response, retries = 3) => {
+
+
+  let lastError: any;
+
+  // Pre-upload validation
+  
+  if (!fs.existsSync(file.path)) {
+    throw new Error(`File not found at path: ${file.path}`);
+  }
+
+  const fileStats = fs.statSync(file.path);
+
+
+
+  try {
+    fs.accessSync(file.path, fs.constants.R_OK);
+  } catch (error: any) {
+  }
+
+
+
+  try {
+    await cloudinary.api.ping();
+  } catch (connectionError: any) {
+
+  }
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+
+
+      let uploadResponse;
+      const baseUploadOptions: any = {
+        use_filename: true,
+        unique_filename: true,
+        timeout: 120000,
+        chunk_size: 6000000,
+        overwrite: false,
+        invalidate: true,
+      };
+
+
+      if (file.mimetype.startsWith("image/")) {
+        const imageOptions = {
+          ...baseUploadOptions,
+          folder: "task_images/",
+          transformation: [
+            { quality: "auto:good" },
+            { fetch_format: "auto" },
+          ],
+          allowed_formats: ["jpg", "png", "gif", "webp", "bmp", "tiff"]
+        };
+        
+        uploadResponse = await cloudinary.uploader.upload(file.path, imageOptions);
+        
+      } else if (file.mimetype.startsWith("audio/")) {
+        const audioOptions = {
+          ...baseUploadOptions,
+          folder: "task_audio/",
+          resource_type: "video",
+        };
+        
+        uploadResponse = await cloudinary.uploader.upload(file.path, audioOptions);
+        
+      } else if (file.mimetype.startsWith("video/")) {
+        const videoOptions = {
+          ...baseUploadOptions,
+          folder: "task_videos/",
+          resource_type: "video",
+          transformation: [
+            { quality: "auto:good" },
+          ],
+        };
+        
+        uploadResponse = await cloudinary.uploader.upload(file.path, videoOptions);
+        
+      } else {
+        const documentOptions = {
+          ...baseUploadOptions,
+          folder: "task_documents/",
+          resource_type: "raw",
+        };
+        
+        uploadResponse = await cloudinary.uploader.upload(file.path, documentOptions);
+      }
+
+
+
+      try {
+        const https = require('https');
+        const http = require('http');
+        const urlModule = require('url');
+        
+        const parsedUrl = urlModule.parse(uploadResponse.secure_url);
+        const client = parsedUrl.protocol === 'https:' ? https : http;
+        
+        const testPromise = new Promise((resolve, reject) => {
+          const req = client.request({
+            hostname: parsedUrl.hostname,
+            path: parsedUrl.path,
+            method: 'HEAD',
+            timeout: 10000
+          }, (res: any) => {
+
+            if (res.statusCode === 200) {
+              resolve(true);
+            } else {
+              reject(new Error(`URL test failed with status: ${res.statusCode}`));
+            }
+          });
+          
+          req.on('error', reject);
+          req.on('timeout', () => {
+            req.destroy();
+            reject(new Error('URL test timeout'));
+          });
+          
+          req.end();
+        });
+        
+        await testPromise;
+      } catch (urlTestError: any) {
+      }
+
+      const result = {
+        secure_url: uploadResponse.secure_url,
+        public_id: uploadResponse.public_id,
+        resource_type: uploadResponse.resource_type,
+        format: uploadResponse.format,
+        bytes: uploadResponse.bytes,
+        original_filename: file.originalname,
+        upload_timestamp: new Date().toISOString(),
+        width: uploadResponse.width,
+        height: uploadResponse.height,
+        version: uploadResponse.version,
+        created_at: uploadResponse.created_at
+      };
+
+
+      return result;
+
+    } catch (error: any) {
+      lastError = error;
+
+
+
+      if (error.code === 'ETIMEDOUT' || error.code === 'ECONNRESET' || error.code === 'ENOTFOUND') {
+
+      }
+      const retryableErrors = ['ETIMEDOUT', 'ECONNRESET', 'ENOTFOUND', 'TimeoutError'];
+      const isRetryable = retryableErrors.includes(error.name) || 
+                         retryableErrors.includes(error.code) || 
+                         error.http_code === 499 ||
+                         (error.message && error.message.includes('timeout'));
+
+      if (attempt < retries && isRetryable) {
+        const waitTime = Math.min(attempt * 2000, 10000);
+
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+        continue;
+      }
+
+      if (attempt === retries) {
+        break;
+      } 
+    }
+  }
+
+
+
+  throw new Error(
+    `Failed to upload ${file.originalname} after ${retries} attempts: ${lastError?.message || "Unknown error"}`
+  );
+}
+// Function to delete files from Cloudinary with retry
+export const DeleteFromCloud = async (
+  publicId: string,
+  resourceType: "image" | "video" | "raw" = "image",
+  retries = 3,
+) => {
+  let lastError: any
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const deleteResponse = await cloudinary.uploader.destroy(publicId, {
+        resource_type: resourceType,
+        timeout: 60000, // 1 minute timeout for delete
+      })
+      return deleteResponse
+    } catch (error: any) {
+      lastError = error
+
+      if (attempt < retries) {
+        const waitTime = attempt * 1000 // 1s, 2s, 3s
+        await new Promise((resolve) => setTimeout(resolve, waitTime))
+        continue
+      }
+    }
+  }
+
+  throw new Error(`Failed to delete ${publicId} after ${retries} attempts: ${lastError?.message || "Unknown error"}`)
+}
+
+// Function to get file info from Cloudinary with retry
+export const GetCloudinaryFileInfo = async (
+  publicId: string,
+  resourceType: "image" | "video" | "raw" = "image",
+  retries = 3,
+) => {
+  let lastError: any
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const result = await cloudinary.api.resource(publicId, {
+        resource_type: resourceType,
+        timeout: 30000, // 30 seconds timeout
+      })
+      return result
+    } catch (error: any) {
+      lastError = error
+
+      if (attempt < retries) {
+        const waitTime = attempt * 1000
+        await new Promise((resolve) => setTimeout(resolve, waitTime))
+        continue
+      }
+    }
+  }
+
+  throw new Error(
+    `Failed to get file info for ${publicId} after ${retries} attempts: ${lastError?.message || "Unknown error"}`,
+  )
+}
+
+// Utility function to validate file before upload
+export const validateFileForUpload = (file: Express.Multer.File): { isValid: boolean; error?: string } => {
+  const maxSize = 10 * 1024 * 1024 // 10MB
+  const allowedTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "video/mp4",
+    "video/avi",
+    "video/mov",
+    "video/wmv",
+    "audio/mp3",
+    "audio/wav",
+    "audio/ogg",
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "text/plain",
+    "application/zip",
+    "application/x-rar-compressed",
+  ]
+
+  if (file.size > maxSize) {
+    return { isValid: false, error: `File ${file.originalname} exceeds 10MB limit` }
+  }
+
+  if (!allowedTypes.includes(file.mimetype)) {
+    return { isValid: false, error: `File type ${file.mimetype} is not allowed` }
+  }
+
+  return { isValid: true }
+}
+
+// Batch upload function for multiple files with sequential processing
+export const UploadMultipleToCloud = async (files: Express.Multer.File[]): Promise<any[]> => {
+  const results: any[] = []
+  const errors: any[] = []
+
+  // Process files sequentially to avoid overwhelming Cloudinary
+  for (const file of files) {
+    try {
+      // Validate file before upload
+      const validation = validateFileForUpload(file)
+      if (!validation.isValid) {
+        errors.push({ file: file.originalname, error: validation.error })
+        continue
+      }
+
+      const result = await UploadToCloud(file)
+      results.push(result)
+    } catch (error: any) {
+      errors.push({ file: file.originalname, error: error.message })
+    }
+  }
+
+
+
+  return results
+}
+
+
+
+
+import { In } from "typeorm";
+
+import { LoanWorkflowService } from "../services/loanWorkflowService";
+import { LoanWorkflow, WorkflowStep } from "../entities/LoanWorkflow";
+import { LoanReview, ReviewDecision } from "../entities/LoanReview";
+import { Request, Response, NextFunction } from "express";
+import { validationResult } from "express-validator";
+import { LoanApplicationService, GuarantorFiles, CollateralFiles, BorrowerFiles, InstitutionFiles, ServiceResponse } from "../services/loanApplicationService";
+import { BorrowerProfile, Gender, RelationshipType } from "../entities/BorrowerProfile";
+import { Loan, BorrowerType, InstitutionType, MaritalStatus ,LoanApprovalData, LoanStatus, ShareholderBoardMemberInfo } from "../entities/Loan";
+import { LoanCollateral } from "../entities/LoanCollateral";
+import { Organization } from "../entities/Organization";
+import { Guarantor, ExtendedGuarantorData } from "../entities/Guarantor";
+import { User ,UserRole} from "../entities/User";
+import { RepaymentSchedule } from "../entities/RepaymentSchedule";
+import dbConnection from "../db";
+import { parseISO, isValid } from 'date-fns';
+
+export interface AuthenticatedRequest extends Request {
+  user?: {
+    id: number;
+    role: string;
+    organizationId: number | null;
+    username: string;
+    email: string;
+  };
+  organizationId?: number;
+}
+
+// export interface CollateralFiles {
+//   // Single-file properties (used by update endpoints)
+//   proofOfOwnershipUrl?: Express.Multer.File;
+//   ownerIdentificationUrl?: Express.Multer.File;
+//   legalDocumentUrl?: Express.Multer.File;
+//   physicalEvidenceUrl?: Express.Multer.File;
+
+//   // Array-based properties (used by create endpoints where multiple files per field may be uploaded)
+//   proofOfOwnership?: Express.Multer.File[];
+//   ownerIdentification?: Express.Multer.File[];
+//   legalDocument?: Express.Multer.File[];
+//   physicalEvidence?: Express.Multer.File[];
+//   valuationReport?: Express.Multer.File[];
+// }
+
+class LoanApplicationController {
+  private userRepository = dbConnection.getRepository(User);
+  private loanApplicationService: LoanApplicationService;
+ private loanWorkflowService: LoanWorkflowService;
+ constructor() {
+    this.loanApplicationService = new LoanApplicationService(
+      dbConnection.getRepository(BorrowerProfile) as any,
+      dbConnection.getRepository(Loan) as any,
+      dbConnection.getRepository(LoanCollateral) as any,
+      dbConnection.getRepository(Organization) as any,
+      dbConnection.getRepository(Guarantor) as any,
+      dbConnection.getRepository(User) as any,
+      dbConnection.getRepository(RepaymentSchedule) as any
+    );
+  this.loanWorkflowService = new LoanWorkflowService(
+    dbConnection.getRepository(LoanWorkflow) as any,
+    dbConnection.getRepository(Loan) as any,
+    dbConnection.getRepository(User) as any,
+    dbConnection.getRepository(LoanReview) as any
+  );
+  }
+
+
+/**
+ * Get all reviews for a loan
+ */
+getLoanReviews = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const organizationId = parseInt(req.params.organizationId);
+    const loanId = parseInt(req.params.loanId);
+
+    if (!organizationId || isNaN(organizationId)) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid organization ID",
+      });
+      return;
+    }
+
+    if (!loanId || isNaN(loanId)) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid loan ID",
+      });
+      return;
+    }
+
+    const result = await this.loanApplicationService.getLoanReviews(loanId, organizationId);
+
+    if (result.success) {
+      res.status(200).json(result);
+    } else {
+      res.status(404).json(result);
+    }
+  } catch (error: any) {
+    console.error("Get loan reviews controller error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error while fetching reviews",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+// ✅ FIXED: Enhanced controller with proper borrower type handling
+createLoanApplication = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    console.log('\n╔════════════════════════════════════════════════════════════════╗');
+    console.log('║  ENHANCED CREATE LOAN APPLICATION - PHASE 1                    ║');
+    console.log('╚════════════════════════════════════════════════════════════════╝\n');
+    
+    // ===== STEP 1: VALIDATION CHECK =====
+    console.log('🔍 STEP 1: VALIDATION CHECK');
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      console.error('❌ Validation errors found:');
+      errors.array().forEach((error, index) => {
+        const err: any = error;
+        const fieldName = err.param ?? err.path ?? err.location ?? 'unknown';
+        console.error(`   ${index + 1}. Field: "${fieldName}"`, {
+          message: err.msg,
+          value: err.value,
+          location: err.location
+        });
+      });
+      
+      res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: errors.array(),
+      });
+      return;
+    }
+    console.log('✅ Validation passed\n');
+
+    // ===== STEP 2: EXTRACT ORGANIZATION ID =====
+    console.log('🔍 STEP 2: EXTRACT ORGANIZATION ID');
+    const organizationId = parseInt(req.params.organizationId);
+    console.log('   Organization ID:', organizationId);
+    
+    if (!organizationId || isNaN(organizationId)) {
+      console.error('❌ Invalid organization ID');
+      res.status(400).json({
+        success: false,
+        message: "Invalid organization ID",
+      });
+      return;
+    }
+    console.log('✅ Organization ID valid\n');
+
+    // ===== STEP 3: PARSE ADDRESS =====
+    console.log('🔍 STEP 3: PARSE ADDRESS');
+    console.log('   Raw address:', req.body.address);
+    let parsedAddress = req.body.address;
+    if (typeof req.body.address === 'string') {
+      try {
+        parsedAddress = JSON.parse(req.body.address);
+        console.log('   ✅ Address parsed successfully:', parsedAddress);
+      } catch (parseError) {
+        console.error('   ❌ Address parsing failed:', parseError);
+        res.status(400).json({
+          success: false,
+          message: "Invalid address format",
+        });
+        return;
+      }
+    }
+    console.log('✅ Address processing complete\n');
+
+    // ===== STEP 4: DETERMINE BORROWER TYPE =====
+    console.log('🔍 STEP 4: DETERMINE BORROWER TYPE');
+    const borrowerType = req.body.borrowerType || BorrowerType.INDIVIDUAL;
+    console.log('   Borrower Type:', borrowerType);
+
+    // ===== STEP 5: PREPARE BORROWER DATA =====
+  // ===== STEP 5: PREPARE BORROWER DATA =====
+console.log('🔍 STEP 5: PREPARE BORROWER DATA');
+
+const borrowerData = borrowerType === BorrowerType.INDIVIDUAL ? {
+  firstName: req.body.firstName,
+  lastName: req.body.lastName,
+  middleName: req.body.middleName || undefined,
+  nationalId: req.body.nationalId,
+  gender: req.body.gender,
+  dateOfBirth: this.parseDate(req.body.dateOfBirth),
+  maritalStatus: req.body.maritalStatus,
+  primaryPhone: req.body.primaryPhone,
+  alternativePhone: req.body.alternativePhone || undefined,
+  email: req.body.email || undefined,
+  address: parsedAddress,
+  occupation: req.body.occupation || undefined,
+  monthlyIncome: req.body.monthlyIncome ? parseFloat(req.body.monthlyIncome) : undefined,
+  incomeSource: req.body.incomeSource || undefined,
+  relationshipWithNDFSP: req.body.relationshipWithNDFSP,
+  previousLoansPaidOnTime: req.body.previousLoansPaidOnTime ? parseInt(req.body.previousLoansPaidOnTime) : undefined,
+  notes: req.body.borrowerNotes || undefined,
+} : {
+  // ✅ Institution borrower data
+  firstName: req.body.institutionProfile?.institutionName || 'Institution Borrower',
+  lastName: 'N/A',
+  
+  // ✅ CRITICAL FIX: Generate 16-character compliant nationalId
+  nationalId: (() => {
+    // Priority 1: Use TIN number if provided (max 16 chars)
+    const tinNumber = req.body.institutionProfile?.tinNumber?.trim();
+    if (tinNumber && tinNumber.length > 0) {
+      return tinNumber.substring(0, 16);
+    }
+    
+    // Priority 2: Generate unique 16-char ID
+    // Format: I{timestamp}{random} = max 16 chars
+    const timestamp = Date.now().toString().slice(-10); // 10 digits
+    const random = Math.floor(Math.random() * 100000).toString().padStart(5, '0'); // 5 digits
+    return `I${timestamp.substring(0, 15)}`; // "I" + 15 digits = 16 chars
+  })(),
+  
+  gender: Gender.OTHER,
+  dateOfBirth: new Date(),
+  maritalStatus: MaritalStatus.SINGLE,
+  primaryPhone: req.body.institutionProfile?.contactPhone || req.body.primaryPhone,
+  alternativePhone: req.body.alternativePhone || undefined,
+  email: req.body.institutionProfile?.contactEmail || req.body.email || undefined,
+  address: parsedAddress,
+  occupation: 'Institution',
+  relationshipWithNDFSP: req.body.relationshipWithNDFSP || RelationshipType.NEW_BORROWER,
+  previousLoansPaidOnTime: 0,
+  notes: req.body.borrowerNotes || `Institution: ${req.body.institutionProfile?.institutionName}`,
+};
+
+console.log('✅ Borrower data ready for type:', borrowerType);
+    // ===== STEP 6: PARSE MULTIPLE INCOME SOURCES =====
+    console.log('🔍 STEP 6: PARSE MULTIPLE INCOME SOURCES');
+    let incomeSources = null;
+    if (req.body.incomeSources) {
+      try {
+        incomeSources = typeof req.body.incomeSources === 'string' 
+          ? JSON.parse(req.body.incomeSources) 
+          : req.body.incomeSources;
+        console.log('   Income sources parsed:', incomeSources.length, 'sources');
+      } catch (e) {
+        console.error('   ❌ Failed to parse income sources:', e);
+      }
+    }
+
+    // ===== STEP 7: PARSE SPOUSE INFORMATION =====
+    console.log('🔍 STEP 7: PARSE SPOUSE INFORMATION');
+    let spouseInfo = null;
+    if (borrowerType === BorrowerType.INDIVIDUAL && 
+        req.body.maritalStatus === MaritalStatus.MARRIED && 
+        req.body.spouseInfo) {
+      try {
+        spouseInfo = typeof req.body.spouseInfo === 'string' 
+          ? JSON.parse(req.body.spouseInfo) 
+          : req.body.spouseInfo;
+        console.log('   Spouse info parsed:', spouseInfo.firstName, spouseInfo.lastName);
+        console.log('   ⚠️  Spouse will be auto-saved as guarantor');
+      } catch (e) {
+        console.error('   ❌ Failed to parse spouse info:', e);
+      }
+    }
+
+    // ===== STEP 8: PARSE INSTITUTION PROFILE =====
+    console.log('🔍 STEP 8: PARSE INSTITUTION PROFILE');
+    let institutionProfile = null;
+    if (borrowerType === BorrowerType.INSTITUTION && req.body.institutionProfile) {
+      try {
+        institutionProfile = typeof req.body.institutionProfile === 'string' 
+          ? JSON.parse(req.body.institutionProfile) 
+          : req.body.institutionProfile;
+        console.log('   Institution profile parsed:', institutionProfile.institutionName);
+        console.log('   Institution type:', institutionProfile.institutionType);
+      } catch (e) {
+        console.error('   ❌ Failed to parse institution profile:', e);
+      }
+    }
+
+    // ========================================
+    // ✅ PHASE 1: PARSE SHAREHOLDER/BOARD MEMBERS
+    // ========================================
+    console.log('🔍 STEP 8B: PARSE SHAREHOLDER/BOARD MEMBER DATA [PHASE 1]');
+    let shareholderBoardMembers: ShareholderBoardMemberInfo[] | null = null;
+    
+    if (borrowerType === BorrowerType.INSTITUTION && req.body.shareholderBoardMembers) {
+      try {
+        const parsed = typeof req.body.shareholderBoardMembers === 'string' 
+          ? JSON.parse(req.body.shareholderBoardMembers) 
+          : req.body.shareholderBoardMembers;
+        
+        if (Array.isArray(parsed)) {
+          shareholderBoardMembers = parsed as ShareholderBoardMemberInfo[];
+          console.log('   ✅ Shareholder/Board members parsed:', shareholderBoardMembers.length, 'members');
+          
+          // Log each member
+          shareholderBoardMembers.forEach((member, index) => {
+            console.log(`   Member ${index + 1}:`, {
+              type: member.type,
+              name: `${member.firstName} ${member.lastName}`,
+              nationalId: member.nationalId,
+              position: member.position || 'N/A',
+              sharePercentage: member.sharePercentage || 'N/A'
+            });
+          });
+        } else {
+          console.error('   ❌ Shareholder/Board members is not an array');
+          shareholderBoardMembers = null;
+        }
+      } catch (e) {
+        console.error('   ❌ Failed to parse shareholder/board members:', e);
+        shareholderBoardMembers = null;
+      }
+    } else if (borrowerType === BorrowerType.INSTITUTION) {
+      console.log('   ⚠️  No shareholder/board members provided (optional)');
+    }
+
+    // ===== STEP 9: PREPARE LOAN DATA =====
+    console.log('🔍 STEP 9: PREPARE LOAN DATA');
+    const loanData = {
+      purposeOfLoan: req.body.purposeOfLoan,
+      branchName: req.body.branchName,
+      businessOfficer: req.body.businessOfficer,
+      disbursedAmount: parseFloat(req.body.disbursedAmount),
+      businessType: req.body.businessType || null,
+      economicSector: req.body.economicSector || null,
+      notes: req.body.loanNotes || undefined,
+      
+      // Individual-specific fields
+      ...(borrowerType === BorrowerType.INDIVIDUAL && {
+        incomeSource: req.body.selectedIncomeSource || req.body.incomeSource || undefined,
+        otherIncomeSource: req.body.otherIncomeSource || undefined,
+        incomeFrequency: req.body.incomeFrequency || undefined,
+        incomeAmount: req.body.incomeAmount ? parseFloat(req.body.incomeAmount) : undefined,
+      }),
+      
+      // Enhanced fields
+      borrowerType: borrowerType,
+      institutionProfile: institutionProfile,
+      
+      // Conditional fields
+      ...(borrowerType === BorrowerType.INDIVIDUAL && {
+        maritalStatus: req.body.maritalStatus || null,
+        spouseInfo: spouseInfo,
+      }),
+      
+      // ✅ PHASE 1: Shareholder/Board Members
+      ...(borrowerType === BorrowerType.INSTITUTION && {
+        shareholderBoardMembers: shareholderBoardMembers,
+      }),
+      
+      incomeSources: incomeSources,
+    };
+    
+    console.log('✅ Loan data ready');
+    console.log('   Has spouse info:', !!spouseInfo);
+    console.log('   Has shareholder/board members:', !!shareholderBoardMembers);
+    console.log('   Shareholders count:', shareholderBoardMembers?.length || 0);
+
+    // ===== STEP 10: PREPARE COLLATERAL DATA =====
+    console.log('🔍 STEP 10: PREPARE COLLATERAL DATA');
+    const collateralData = {
+      collateralType: req.body.collateralType,
+      description: req.body.collateralDescription || '',
+      collateralValue: req.body.collateralValue ? parseFloat(req.body.collateralValue) : 0,
+      guarantorName: req.body.guarantorName || undefined,
+      guarantorPhone: req.body.guarantorPhone || undefined,
+      guarantorAddress: req.body.guarantorAddress || undefined,
+      valuationDate: req.body.valuationDate ? this.parseDate(req.body.valuationDate) : undefined,
+      valuedBy: req.body.valuedBy || undefined,
+      notes: req.body.collateralNotes || undefined,
+    };
+    console.log('✅ Collateral data ready\n');
+ console.log('🔍 STEP 10.5: PARSE MULTIPLE GUARANTORS');
+    let guarantorsData: Array<{
+      name: string;
+      phone: string;
+      address?: string;
+      nationalId?: string;
+      email?: string;
+      guarantorType?: 'individual' | 'institution';
+      guaranteedAmount?: number;
+    }> = [];
+
+    // ✅ NEW: Check for multiple guarantors in request body
+    if (req.body.guarantors) {
+      try {
+        const parsed = typeof req.body.guarantors === 'string' 
+          ? JSON.parse(req.body.guarantors) 
+          : req.body.guarantors;
+        
+        if (Array.isArray(parsed)) {
+          guarantorsData = parsed;
+          console.log('   ✅ Multiple guarantors parsed:', guarantorsData.length, 'guarantors');
+          
+          // Log each guarantor
+          guarantorsData.forEach((guarantor, index) => {
+            console.log(`   Guarantor ${index + 1}:`, {
+              name: guarantor.name,
+              phone: guarantor.phone,
+              nationalId: guarantor.nationalId || 'N/A',
+              type: guarantor.guarantorType || 'individual'
+            });
+          });
+        } else {
+          console.error('   ❌ Guarantors is not an array');
+        }
+      } catch (e) {
+        console.error('   ❌ Failed to parse guarantors:', e);
+      }
+    } 
+    // ✅ BACKWARD COMPATIBILITY: Single guarantor from form fields (100% ORIGINAL)
+    else if (req.body.guarantorName && req.body.guarantorPhone) {
+      guarantorsData.push({
+        name: req.body.guarantorName,
+        phone: req.body.guarantorPhone,
+        address: req.body.guarantorAddress,
+        guaranteedAmount: req.body.collateralValue ? parseFloat(req.body.collateralValue) : undefined,
+      });
+      console.log('   ✅ Single guarantor from form fields (backward compatibility)');
+    } else {
+      console.log('   ℹ️  No additional guarantors provided');
+    }
+
+    console.log(`   📊 Total guarantors to process: ${guarantorsData.length}`);
+
+    // ===== STEP 10.6: UPDATE COLLATERAL DATA WITH GUARANTORS =====
+    console.log('🔍 STEP 10.6: UPDATE COLLATERAL DATA WITH GUARANTORS');
+    const collateralDataWithGuarantors = {
+      ...collateralData,
+      guarantorsData: guarantorsData.length > 0 ? guarantorsData : undefined, // ✅ NEW: Pass array to service
+    };
+    console.log('✅ Collateral data updated with guarantors\n');
+    
+// ===== STEP 11: EXTRACT UPLOADED FILES (FIXED) =====
+console.log('🔍 STEP 11: EXTRACT UPLOADED FILES');
+const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+
+console.log('📁 Raw files object keys:', Object.keys(files || {}));
+console.log('📁 Files breakdown:', Object.entries(files || {}).map(([key, fileArray]) => 
+  `${key}: ${fileArray?.length || 0} file(s)`
+).join(', '));
+
+// Collateral files
+const collateralFiles: CollateralFiles = {
+  proofOfOwnership: files?.proofOfOwnership || [],
+  ownerIdentification: files?.ownerIdentification || [],
+  legalDocument: files?.legalDocument || [],
+  physicalEvidence: files?.physicalEvidence || [],
+  valuationReport: files?.valuationReport || [],
+  additionalCollateralDocs: files?.additionalCollateralDocs || [],
+};
+
+// Guarantor files
+const guarantorFiles: GuarantorFiles = {
+  guarantorIdentification: files?.guarantorIdentification || [],
+  guarantorCrbReport: files?.guarantorCrbReport || [],
+};
+
+// ✅ FIX: Use borrowerType instead of formData.borrowerType
+const borrowerFiles: BorrowerFiles = borrowerType === BorrowerType.INDIVIDUAL ? {
+  marriageCertificate: files?.marriageCertificate || [],
+  spouseCrbReport: files?.spouseCrbReport || [],
+  spouseIdentification: files?.spouseIdentification || [],
+  witnessCrbReport: files?.witnessCrbReport || [],
+  witnessIdentification: files?.witnessIdentification || [],
+} : {
+  marriageCertificate: [],
+  spouseCrbReport: [],
+  spouseIdentification: [],
+  witnessCrbReport: [],
+  witnessIdentification: [],
+};
+
+// ✅ FIX: Use borrowerType instead of formData.borrowerType
+const institutionFiles: InstitutionFiles = borrowerType === BorrowerType.INSTITUTION ? {
+  institutionLegalDocument: files?.institutionLegalDocument || [],
+  cooperativeLegalDocument: files?.cooperativeLegalDocument || [],
+  otherInstitutionLegalDocument: files?.otherInstitutionLegalDocument || [],
+  institutionLicense: files?.institutionLicense || [],
+  institutionTradingLicense: files?.institutionTradingLicense || [],
+  institutionRegistration: files?.institutionRegistration || [],
+  shareholderIdentification: files?.shareholderIdentification || [],
+  boardMemberIdentification: files?.boardMemberIdentification || [],
+  proofOfShares: files?.proofOfShares || [],
+  boardResolution: files?.boardResolution || [],
+  shareholderCrbReport: files?.shareholderCrbReport || [],
+  boardMemberCrbReport: files?.boardMemberCrbReport || [],
+} : {
+  institutionLegalDocument: [],
+  cooperativeLegalDocument: [],
+  otherInstitutionLegalDocument: [],
+  institutionLicense: [],
+  institutionTradingLicense: [],
+  institutionRegistration: [],
+  shareholderIdentification: [],
+  boardMemberIdentification: [],
+  proofOfShares: [],
+  boardResolution: [],
+  shareholderCrbReport: [],
+  boardMemberCrbReport: [],
+};
+
+const fileSummary = {
+  collateral: Object.values(collateralFiles).reduce((total, arr) => total + arr.length, 0),
+  guarantor: Object.values(guarantorFiles).reduce((total, arr) => total + arr.length, 0),
+  borrower: Object.values(borrowerFiles).reduce((total, arr) => total + arr.length, 0),
+  institution: Object.values(institutionFiles).reduce((total, arr) => total + arr.length, 0),
+};
+
+console.log('   📁 Files summary for borrower type:', borrowerType, fileSummary);
+
+// ✅ FIX: Log shareholder/board member files specifically
+if (borrowerType === BorrowerType.INSTITUTION) {
+  const shareholderFiles = {
+    shareholderIdentification: institutionFiles.shareholderIdentification?.length || 0,
+    boardMemberIdentification: institutionFiles.boardMemberIdentification?.length || 0,
+    proofOfShares: institutionFiles.proofOfShares?.length || 0,
+    boardResolution: institutionFiles.boardResolution?.length || 0,
+    shareholderCrbReport: institutionFiles.shareholderCrbReport?.length || 0,
+    boardMemberCrbReport: institutionFiles.boardMemberCrbReport?.length || 0,
+  };
+  
+  const totalShareholderFiles = Object.values(shareholderFiles).reduce((sum, count) => sum + count, 0);
+  
+  console.log('   📊 Shareholder/Board member files:', shareholderFiles);
+  console.log(`   ✅ Total shareholder/board member files: ${totalShareholderFiles}`);
+}
+
+console.log('✅ Files extracted\n');
+
+// ===== STEP 12: CALL SERVICE =====
+console.log('🔍 STEP 12: CALL LOAN APPLICATION SERVICE');
+console.log('   Calling createCompleteLoanApplication...');
+
+const result = await this.loanApplicationService.createCompleteLoanApplication(
+  borrowerData,
+  loanData,
+  collateralDataWithGuarantors, 
+  organizationId,
+  req.user?.id || null,
+  collateralFiles,
+  guarantorFiles,
+  borrowerFiles,
+  institutionFiles
+);
+
+console.log('   Service call completed');
+console.log('   Result:', {
+  success: result.success,
+  message: result.message,
+  hasData: !!result.data,
+  spouseCreated: result.data?.spouseGuarantorCreated,
+  shareholdersCount: result.data?.shareholdersCount,
+  shareholderDocsUploaded: result.data?.shareholderDocumentsUploaded,
+});
+
+    // ===== STEP 13: SEND RESPONSE =====
+    console.log('🔍 STEP 13: SEND RESPONSE');
+    if (result.success) {
+      console.log('✅ SUCCESS - Loan application created');
+      console.log('   Loan ID:', result.data?.loan?.loanId);
+      console.log('   Borrower Type:', result.data?.loan?.borrowerType);
+      
+      // ✅ PHASE 1 Success indicators
+      if (result.data?.spouseGuarantorCreated) {
+        console.log('   ✅ PHASE 1: Spouse auto-created as guarantor');
+      }
+      if (result.data?.shareholdersCount) {
+        console.log(`   ✅ PHASE 1: ${result.data.shareholdersCount} shareholders/board members saved`);
+      }
+      
+      console.log('   Status:', result.data?.status);
+      
+      res.status(201).json(result);
+    } else {
+      console.error('❌ FAILED - Loan application creation failed');
+      console.error('   Reason:', result.message);
+      
+      res.status(400).json(result);
+    }
+
+    console.log('\n╔════════════════════════════════════════════════════════════════╗');
+    console.log('║  LOAN APPLICATION CREATION COMPLETED                           ║');
+    console.log('╚════════════════════════════════════════════════════════════════╝\n');
+
+  } catch (error: any) {
+    console.error('\n╔════════════════════════════════════════════════════════════════╗');
+    console.error('║  CRITICAL ERROR IN CREATE LOAN APPLICATION                    ║');
+    console.error('╚════════════════════════════════════════════════════════════════╝');
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    
+    res.status(500).json({
+      success: false,
+      message: "Internal server error during loan application creation",
+      debugInfo: process.env.NODE_ENV === "development" ? {
+        error: error.message,
+        stack: error.stack
+      } : undefined,
+    });
+  }
+};
+
+}
+
+export default new LoanApplicationController()
+
+
+// @ts-nocheck
+import { ExtendedGuarantorData, Guarantor } from "../entities/Guarantor";
+import { In, IsNull, Not, Repository } from "typeorm";
+import { Address, BorrowerProfile, BorrowerProfileData, Gender, MaritalStatus, RelationshipType } from "../entities/BorrowerProfile";
+import { Loan, LoanData, InterestMethod, RepaymentFrequency, LoanStatus, LoanApprovalData, IncomeFrequency, BorrowerType, InstitutionProfile, SpouseInfo, IncomeSourceInfo, InstitutionType, ShareholderBoardMemberInfo } from "../entities/Loan";
+import { LoanCollateral, CollateralType } from "../entities/LoanCollateral";
+import { Organization } from "../entities/Organization";
+import { PaymentStatus, RepaymentSchedule, ScheduleStatus } from "../entities/RepaymentSchedule";
+import dbConnection from "../db";
+import { UploadToCloud } from "../helpers/cloud";
+import { v4 as uuidv4 } from 'uuid';
+import { sendLoanStatusUpdateEmail } from "../templates/UpdateLoanBorrowerLoanApplicationStatusTemplate";
+import { sendLoanApprovalEmail, sendLoanRejectionEmail } from "../templates/LoanApprovalEmailTemplate";
+import { User, UserRole } from "../entities/User";
+import { sendLoanReviewedEmail } from "../templates/LoanReviewedEmailTemplate";
+import { LoanReview, ReviewDecision, ReviewStatus } from "../entities/LoanReview";
+import { LoanWorkflow, WorkflowStep } from "../entities/LoanWorkflow";
+export interface CollateralFiles {
+  proofOfOwnership?: Express.Multer.File[];
+  ownerIdentification?: Express.Multer.File[];
+  legalDocument?: Express.Multer.File[];
+  physicalEvidence?: Express.Multer.File[];
+  valuationReport?: Express.Multer.File[];
+}
+interface LoanTermsCalculation {
+  totalInterestAmount: number;
+  totalAmountToBeRepaid: number;
+  monthlyInstallmentAmount: number;
+  totalNumberOfInstallments: number;
+  outstandingPrincipal: number;
+  agreedMaturityDate: Date;
+  agreedFirstPaymentDate: Date;
+  accruedInterestToDate: number;
+  daysInArrears: number;
+  status: LoanStatus;
+}
+
+export interface CollateralFiles {
+  proofOfOwnership?: Express.Multer.File[];
+  ownerIdentification?: Express.Multer.File[];
+  legalDocument?: Express.Multer.File[];
+  physicalEvidence?: Express.Multer.File[];
+  valuationReport?: Express.Multer.File[];
+  additionalCollateralDocs?: Express.Multer.File[];
+}
+
+
+
+
+
+
+
+export interface GuarantorFiles {
+  guarantorIdentification?: Express.Multer.File[];
+  guarantorCrbReport?: Express.Multer.File[];
+}
+
+// ✅ NEW: Borrower-specific files
+export interface BorrowerFiles {
+  marriageCertificate?: Express.Multer.File[];
+  spouseCrbReport?: Express.Multer.File[];
+  spouseIdentification?: Express.Multer.File[];
+  witnessCrbReport?: Express.Multer.File[];
+  witnessIdentification?: Express.Multer.File[];
+}
+
+export interface InstitutionFiles {
+  institutionLegalDocument?: Express.Multer.File[];
+  cooperativeLegalDocument?: Express.Multer.File[];
+  otherInstitutionLegalDocument?: Express.Multer.File[];
+  institutionLicense?: Express.Multer.File[];
+  institutionTradingLicense?: Express.Multer.File[];
+  institutionRegistration?: Express.Multer.File[];
+  
+  // ✅ NEW: Shareholder/Board Member file fields
+  shareholderIdentification?: Express.Multer.File[];
+  boardMemberIdentification?: Express.Multer.File[];
+  proofOfShares?: Express.Multer.File[];
+  boardResolution?: Express.Multer.File[];
+  shareholderCrbReport?: Express.Multer.File[];
+  boardMemberCrbReport?: Express.Multer.File[];
+}
+
+
+export interface CollateralData {
+  collateralType: CollateralType;
+  description: string;
+  collateralValue: number;
+  guarantorName?: string;
+  guarantorPhone?: string;
+  guarantorAddress?: string;
+  valuationDate?: Date;
+  valuedBy?: string;
+  notes?: string;
+}
+
+
+export interface EnhancedLoanApplicationRequest {
+  // Borrower type selection
+  borrowerType: 'individual' | 'institution';
+
+  // Individual borrower data (existing)
+  borrowerData?: BorrowerProfileData;
+
+  // Institution data (new)
+  institutionData?: {
+    institutionType: 'company' | 'cooperative' | 'other';
+    otherInstitutionType?: string;
+    institutionName: string;
+    licenseNumber: string;
+    registrationDate: string;
+    tinNumber: string;
+    contactPerson: string;
+    contactPhone: string;
+    contactEmail: string;
+    address: Address;
+  };
+
+  // Enhanced spouse information
+  spouseInformation?: {
+    firstName: string;
+    lastName: string;
+    nationalId: string;
+    phone: string;
+    email?: string;
+  };
+
+  // Dynamic income sources
+  incomeSources: Array<{
+    source: string;
+    frequency: IncomeFrequency;
+    amount: number;
+    description?: string;
+  }>;
+
+  // Loan data (existing but enhanced)
+  loanData: Omit<LoanData, 'borrowerId'> & {
+    businessOfficer: string;
+  };
+
+  // Collateral data (existing)
+  collateralData: CollateralData;
+
+  // Additional collateral documents
+  additionalCollateralDocuments?: Array<{
+    name: string;
+    description?: string;
+    files: File[];
+  }>;
+
+  organizationId: number;
+  createdBy: number | null;
+}
+export interface EnhancedCollateralFiles extends CollateralFiles {
+  // Institution documents
+  institutionLegalDocument?: Express.Multer.File[]; // RDB, RGB, RCA
+
+  // Spouse and witness documents
+  marriageCertificate?: Express.Multer.File[];
+  spouseCrbReport?: Express.Multer.File[];
+  witnessCrbReport?: Express.Multer.File[];
+  borrowerCrbReport?: Express.Multer.File[];
+
+  // Additional collateral documents
+  additionalCollateralDocuments?: Express.Multer.File[];
+}
+
+
+
+export interface ServiceResponse<T = any> {
+  success: boolean;
+  message: string;
+  data?: T;
+  pagination?: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+  };
+}
+
+
+export interface LoanCalculationUpdate {
+  outstandingPrincipal: number;
+  accruedInterestToDate: number;
+  daysInArrears: number;
+  status: LoanStatus;
+}
+
+export interface DailyCalculationResult {
+  totalLoansProcessed: number;
+  totalInterestAccrued: number;
+  loansWithUpdatedStatus: number;
+  errors: string[];
+}
+
+export class LoanApplicationService {
+  private repaymentScheduleRepository: Repository<RepaymentSchedule>;
+  private readonly MAX_NUMERIC_VALUE = 9999999999999.99;
+  private readonly MIN_LOAN_AMOUNT = 1000;
+  // private readonly MAX_LOAN_AMOUNT = 100000000;
+  private readonly MAX_TERM_MONTHS = 480;
+  private guarantorRepository: Repository<Guarantor>;
+  constructor(
+    private borrowerRepository: Repository<BorrowerProfile>,
+    private loanRepository: Repository<Loan>,
+    private collateralRepository: Repository<LoanCollateral>,
+    private organizationRepository: Repository<Organization>,
+    private loanReviewRepository: Repository<LoanReview>,
+    private userRepository: Repository<User>,
+    private workflowRepository: Repository<LoanWorkflow>
+  ) {
+    this.repaymentScheduleRepository = dbConnection.getRepository(RepaymentSchedule);
+    this.loanReviewRepository = dbConnection.getRepository(LoanReview); // ADD THIS
+    this.userRepository = dbConnection.getRepository(User);
+    this.workflowRepository = dbConnection.getRepository(LoanWorkflow);
+    this.guarantorRepository = dbConnection.getRepository(Guarantor);
+  }
+}
+
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  OneToMany,
+  Index,
+  JoinColumn,
+} from "typeorm";
+import { Organization } from "./Organization";
+import { BorrowerProfile } from "./BorrowerProfile";
+import { LoanCollateral } from "./LoanCollateral";
+import { RepaymentSchedule } from "./RepaymentSchedule";
+import { RepaymentTransaction } from "./RepaymentTransaction";
+import { LoanClassification } from "./LoanClassification";
+import { NumberUtils } from "../utils/NumberUtils";
+import { LoanReview } from "./LoanReview";
+import { Guarantor } from "./Guarantor"
+import { BouncedCheque } from "./BouncedCheque";
+export enum BusinessType {
+  MICRO = "micro",
+  SMALL = "small",
+  MEDIUM = "medium",
+  LARGE = "large",
+  YOUTH_BUSINESS = "youth_business",
+  PUBLIC_COMPANY = "public_company",
+  PRIVATE_COMPANY = "private_company",
+  COOPERATIVE = "cooperative",
+  PARTNERSHIP = "partnership",
+  FOUNDATION = "foundation"
+}
+
+export enum IncomeFrequency {
+  DAILY = "daily",
+  WEEKLY = "weekly",
+  MONTHLY = "monthly",
+  QUARTERLY = "quarterly",
+  ANNUALLY = "annually"
+}
+
+
+export enum EconomicSector {
+  AGRICULTURE_LIVESTOCK_FISHING = "agriculture_livestock_fishing",
+  PUBLIC_WORKS_CONSTRUCTION = "public_works_construction",
+  COMMERCE_RESTAURANTS_HOTELS = "commerce_restaurants_hotels",
+  TRANSPORT_WAREHOUSES = "transport_warehouses",
+  MANUFACTURING = "manufacturing",
+  SERVICES = "services",
+  TECHNOLOGY = "technology",
+  HEALTHCARE = "healthcare",
+  EDUCATION = "education",
+  FINANCIAL_SERVICES = "financial_services",
+  OTHERS = "others"
+}
+
+// ✅ NEW: Borrower Type Enum
+export enum BorrowerType {
+  INDIVIDUAL = "individual",
+  INSTITUTION = "institution"
+}
+// ✅ NEW: Institution Type Enum
+export enum InstitutionType {
+  COMPANY = "company",
+  COOPERATIVE = "cooperative",
+  OTHER = "other"
+}
+
+
+
+export enum MaritalStatus {
+  SINGLE = "single",
+  MARRIED = "married",
+  DIVORCED = "divorced",
+  WIDOWED = "widowed"
+}
+
+// ✅ NEW: Income Source Interface for array storage
+export interface IncomeSourceInfo {
+  source: string;
+  otherSource?: string;
+  frequency: IncomeFrequency;
+  amount: number;
+}
+
+export interface InstitutionProfile {
+  institutionName: string;
+  institutionType: InstitutionType;
+  otherInstitutionType?: string;
+  licenseNumber: string;
+  registrationDate: string;
+  tinNumber: string;
+  legalDocumentUrl?: string; // RDB, RGB, or RCA
+  address?: any;
+  contactPerson?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+}
+
+// ✅ NEW: Spouse Information Interface
+export interface SpouseInfo {
+  firstName: string;
+  lastName: string;
+  middleName?: string;
+  nationalId: string;
+  phone: string;
+  email?: string;
+  occupation?: string;
+  crbReportUrl?: string; // Credit worthiness document
+}
+
+export interface LoanApprovalData {
+  annualInterestRate: number;
+  disbursementDate: Date;
+  agreedMaturityDate: Date;
+  repaymentFrequency: RepaymentFrequency;
+  interestMethod: InterestMethod;
+  gracePeriodMonths?: number;
+}
+
+export interface LoanData {
+  borrowerId: number;
+  purposeOfLoan: string;
+  branchName: string;
+  bisinessOfficer: string;
+  loanOfficer: string;
+  disbursedAmount: number;
+  businessType?: BusinessType | null;
+  economicSector?: EconomicSector | null;
+  notes?: string;
+}
+
+export enum InterestMethod {
+  FLAT = "flat",
+  REDUCING_BALANCE = "reducing_balance"
+}
+
+export enum RepaymentFrequency {
+  DAILY = "daily",
+  WEEKLY = "weekly",
+  BIWEEKLY = "biweekly",
+  MONTHLY = "monthly",
+  QUARTERLY = "quarterly",
+  SEMI_ANNUALLY = "semi_annually",
+  ANNUALLY = "annually"
+}
+
+export enum LoanStatus {
+  PENDING = "pending",
+  APPROVED = "approved",
+  DISBURSED = "disbursed",
+  PERFORMING = "performing",
+  WATCH = "watch",
+  SUBSTANDARD = "substandard",
+  DOUBTFUL = "doubtful",
+  LOSS = "loss",
+  WRITTEN_OFF = "written_off",
+  CLOSED = "closed",
+  REJECTED = "rejected" // ✅ NEW STATUS
+}
+export interface ShareholderBoardMemberInfo {
+  type: 'shareholder' | 'board_member';
+  firstName: string;
+  lastName: string;
+  middleName?: string;
+  nationalId: string;
+  phone: string;
+  email?: string;
+  position?: string; 
+  sharePercentage?: number;
+  
+  documents?: {
+    identificationUrl?: string;
+    proofOfSharesUrl?: string;
+    boardResolutionUrl?: string;
+    crbReportUrl?: string;
+  };
+}
+
+@Entity("loans")
+@Index(["organizationId", "loanId"], { unique: true })
+@Index(["borrowerId"])
+@Index(["loanOfficer"])
+@Index(["status"])
+@Index(["disbursementDate"])
+@Index(["borrowerType"])
+export class Loan {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ type: "varchar", length: 50, unique: true })
+  loanId: string;
+
+  @Column({
+    type: "enum",
+    enum: BorrowerType,
+    default: BorrowerType.INDIVIDUAL
+  })
+  borrowerType: BorrowerType;
+
+
+  @Column({ type: "jsonb", nullable: true })
+  institutionProfile: InstitutionProfile | null;
+
+  @Column({
+    type: "enum",
+    enum: MaritalStatus,
+    nullable: true
+  })
+  maritalStatus: MaritalStatus | null;
+
+  @Column({ type: "varchar", length: 500, nullable: true })
+  marriageCertificateUrl: string | null;
+
+  @Column({ type: "jsonb", nullable: true })
+  spouseInfo: SpouseInfo | null;
+
+  @Column({ type: "jsonb", nullable: true })
+
+  @Column({ type: "jsonb", nullable: true })
+  shareholderBoardMembers: ShareholderBoardMemberInfo[] | null;
+
+  // ========================================
+  // ✅ NEW: Witness CRB Report
+  // ========================================
+
+  @Column({ type: "varchar", length: 500, nullable: true })
+  witnessCrbReportUrl: string | null;
+
+  // ========================================
+  // ✅ ENHANCED: Multiple Income Sources
+  // ========================================
+
+  @Column({ type: "jsonb", nullable: true })
+  incomeSources: IncomeSourceInfo[] | null;
+
+  // Keep old fields for backward compatibility
+  @Column({ type: "varchar", length: 200, nullable: true })
+  incomeSource: string | null;
+
+  @Column({ type: "varchar", length: 200, nullable: true })
+  otherIncomeSource: string | null;
+
+  @Column({
+    type: "enum",
+    enum: IncomeFrequency,
+    nullable: true
+  })
+  incomeFrequency: IncomeFrequency | null;
+
+  @Column({ type: "decimal", precision: 15, scale: 2, nullable: true })
+  incomeAmount: number | null;
+
+
+
+
+
+
+
+
+
+
+  @Column({ type: "varchar", length: 255, nullable: true })
+  otherInstitutionType: string | null;
+  @Column({ type: "varchar", length: 100, nullable: true })
+  institutionName: string | null;
+
+  @Column({ type: "varchar", length: 50, nullable: true })
+  licenseNumber: string | null;
+
+  @Column({ type: "date", nullable: true })
+  registrationDate: Date | null;
+
+  @Column({ type: "varchar", length: 50, nullable: true })
+  tinNumber: string | null;
+
+  // ✅ NEW: Spouse information fields
+  @Column({ type: "varchar", length: 100, nullable: true })
+  spouseFirstName: string | null;
+
+  @Column({ type: "varchar", length: 100, nullable: true })
+  spouseLastName: string | null;
+
+  @Column({ type: "varchar", length: 16, nullable: true })
+  spouseNationalId: string | null;
+
+  @Column({ type: "varchar", length: 20, nullable: true })
+  spousePhone: string | null;
+
+  @Column({ type: "varchar", length: 255, nullable: true })
+  spouseEmail: string | null;
+
+  // ✅ NEW: Document URLs for enhanced functionality
+  @Column({ type: "text", nullable: true })
+  institutionLegalDocumentUrls: string | null; // RDB, RGB, RCA based on institution type
+
+  @Column({ type: "text", nullable: true })
+  marriageCertificateUrls: string | null;
+
+  @Column({ type: "text", nullable: true })
+  spouseCrbReportUrls: string | null;
+
+  @Column({ type: "text", nullable: true })
+  witnessCrbReportUrls: string | null;
+
+  @Column({ type: "text", nullable: true })
+  borrowerCrbReportUrls: string | null;
+
+
+
+  @Column({ type: "int", nullable: true })
+  borrowerId: number | null;
+
+  @Column({ type: "int", nullable: true })
+  institutionId: number | null;
+
+  @Column({ type: "text" })
+  purposeOfLoan: string;
+  @Column({
+    type: "enum",
+    enum: BusinessType,
+    nullable: true
+  })
+  businessType: BusinessType | null;
+  @Column({
+    type: "enum",
+    enum: EconomicSector,
+    nullable: true
+  })
+  economicSector: EconomicSector | null;
+
+  @Column({ type: "varchar", length: 100 })
+  branchName: string;
+
+  @Column({ type: "varchar", length: 100, nullable: true })
+  businessOfficer: string;
+
+  @Column({ type: "varchar", length: 200, nullable: true })
+  loanOfficer: string;
+
+  @Column({ type: "decimal", precision: 15, scale: 2 })
+  disbursedAmount: number;
+
+
+  // ✅ FIELDS THAT WILL BE SET DURING APPROVAL (nullable initially)
+  @Column({ type: "date", nullable: true })
+  disbursementDate: Date | null;
+
+  @Column({ type: "decimal", precision: 5, scale: 2, nullable: true })
+  annualInterestRate: number | null;
+
+  @Column({
+    type: "enum",
+    enum: InterestMethod,
+    nullable: true
+  })
+  interestMethod: InterestMethod | null;
+
+  @Column({ type: "int", nullable: true })
+  termInMonths: number | null;
+
+  @Column({ type: "date", nullable: true })
+  agreedMaturityDate: Date | null;
+
+  @Column({
+    type: "enum",
+    enum: RepaymentFrequency,
+    nullable: true
+  })
+  repaymentFrequency: RepaymentFrequency | null;
+
+  @Column({ type: "int", default: 0 })
+  gracePeriodMonths: number;
+
+  // ✅ CALCULATED FIELDS (set during approval)
+  @Column({ type: "date", nullable: true })
+  agreedFirstPaymentDate: Date | null;
+
+  @Column({ type: "int", nullable: true })
+  totalNumberOfInstallments: number | null;
+
+  @Column({ type: "decimal", precision: 15, scale: 2, nullable: true })
+  totalInterestAmount: number | null;
+
+  @Column({ type: "decimal", precision: 15, scale: 2, nullable: true })
+  totalAmountToBeRepaid: number | null;
+
+  @Column({ type: "decimal", precision: 15, scale: 2, nullable: true })
+  monthlyInstallmentAmount: number | null;
+
+  @Column({ type: "decimal", precision: 15, scale: 2 })
+  outstandingPrincipal: number;
+
+  @Column({ type: "decimal", precision: 15, scale: 2, default: 0 })
+  accruedInterestToDate: number;
+
+  @Column({ type: "int", default: 0 })
+  daysInArrears: number;
+
+  @Column({
+    type: "enum",
+    enum: LoanStatus,
+    default: LoanStatus.PENDING
+  })
+  status: LoanStatus;
+
+  // ✅ NEW: Approval tracking fields
+  @Column({ type: "int", nullable: true })
+  approvedBy: number | null;
+
+  @Column({ type: "timestamp", nullable: true })
+  approvedAt: Date | null;
+
+  // ✅ NEW: Rejection tracking fields
+  @Column({ type: "int", nullable: true })
+  rejectedBy: number | null;
+
+  @Column({ type: "timestamp", nullable: true })
+  rejectedAt: Date | null;
+
+  @Column({ type: "text", nullable: true })
+  rejectionReason: string | null;
+
+  @Column({ type: "text", nullable: true })
+  notes: string | null;
+
+  @OneToMany(() => Guarantor, (guarantor) => guarantor.loan, {
+    cascade: ["remove"],
+  })
+  guarantors: Guarantor[];
+
+
+
+  @OneToMany(() => BouncedCheque, (bouncedCheques) => bouncedCheques.loan, {
+    cascade: ["remove"],
+  })
+  bouncedCheques: BouncedCheque[];
+
+  @Column({ type: "boolean", default: true })
+  isActive: boolean;
+
+  @Column({ type: "int" })
+  organizationId: number;
+
+  @Column({ type: "int", nullable: true })
+  createdBy: number | null;
+
+  @Column({ type: "int", nullable: true })
+  updatedBy: number | null;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  // ===== RELATIONSHIPS (100% UNCHANGED) =====
+  @ManyToOne(() => Organization, (organization) => organization.loans)
+  @JoinColumn({ name: "organizationId" })
+  organization: Organization;
+
+  @ManyToOne(() => BorrowerProfile, (borrower) => borrower.loans, { nullable: true })
+  @JoinColumn({ name: "borrowerId" })
+  borrower: BorrowerProfile;
+
+
+
+  @OneToMany(() => LoanCollateral, (collateral) => collateral.loan, {
+    cascade: ["remove"],
+  })
+  collaterals: LoanCollateral[];
+
+  @OneToMany(() => LoanReview, (review) => review.loan, {
+    cascade: ["remove"],
+  })
+  reviews: LoanReview[];
+
+  @OneToMany(() => RepaymentSchedule, (schedule) => schedule.loan, {
+    cascade: ["remove"],
+  })
+  repaymentSchedules: RepaymentSchedule[];
+
+  @OneToMany(() => RepaymentTransaction, (transaction) => transaction.loan, {
+    cascade: ["remove"],
+  })
+  transactions: RepaymentTransaction[];
+
+  @OneToMany(() => LoanClassification, (classification) => classification.loan, {
+    cascade: ["remove"],
+  })
+  classifications: LoanClassification[];
+
+  // ===== ALL BUSINESS METHODS REMAIN 100% UNCHANGED =====
+  getMaxDaysOverdue(): number {
+    if (!this.repaymentSchedules || this.repaymentSchedules.length === 0) {
+      return 0;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let maxDaysOverdue = 0;
+
+    for (const schedule of this.repaymentSchedules) {
+      if (schedule.isPaid || schedule.paymentStatus === 'paid') {
+        continue;
+      }
+
+      const dueDate = schedule.dueDate instanceof Date
+        ? schedule.dueDate
+        : new Date(schedule.dueDate);
+
+      dueDate.setHours(0, 0, 0, 0);
+
+      if (dueDate < today) {
+        const daysOverdue = Math.floor(
+          (today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)
+        );
+
+        maxDaysOverdue = Math.max(maxDaysOverdue, daysOverdue);
+      }
+    }
+
+    return maxDaysOverdue;
+  }
+
+  getAutomaticClassification(): LoanStatus {
+    const daysOverdue = this.getMaxDaysOverdue();
+
+    if (daysOverdue === 0) return LoanStatus.PERFORMING;
+    if (daysOverdue <= 30) return LoanStatus.WATCH;
+    if (daysOverdue <= 90) return LoanStatus.SUBSTANDARD;
+    if (daysOverdue <= 180) return LoanStatus.DOUBTFUL;
+    return LoanStatus.LOSS;
+  }
+
+  get totalInstallmentsPaid(): number {
+    const paidSchedules = this.repaymentSchedules?.filter(s => s.isPaid) || [];
+    return Number(paidSchedules.length) || 0;
+  }
+
+  get totalInstallmentsOutstanding(): number {
+    const total = Number(this.totalNumberOfInstallments) || 0;
+    const paid = this.totalInstallmentsPaid;
+    return Math.max(0, total - paid);
+  }
+
+  get principalRepaidToDate(): number {
+    const transactions = this.transactions?.filter(t => t.isActive) || [];
+    const totalPrincipal = transactions.reduce((sum, t) => {
+      const principal = Number(t.principalPaid) || 0;
+      return sum + principal;
+    }, 0);
+    return Number(totalPrincipal.toFixed(2)) || 0;
+  }
+
+  get balanceOutstanding(): number {
+    const principal = Number(this.outstandingPrincipal) || 0;
+    const interest = Number(this.accruedInterestToDate) || 0;
+    return Number((principal + interest).toFixed(2));
+  }
+
+  getPerformanceMetrics() {
+    const totalInstallments = NumberUtils.safeNumber(this.totalNumberOfInstallments);
+    const installmentsPaid = NumberUtils.safeNumber(this.totalInstallmentsPaid);
+    const principalRepaid = NumberUtils.safeNumber(this.principalRepaidToDate);
+    const disbursedAmount = NumberUtils.safeNumber(this.disbursedAmount);
+    const outstandingPrincipal = NumberUtils.safeNumber(this.outstandingPrincipal);
+    const accruedInterest = NumberUtils.safeNumber(this.accruedInterestToDate);
+
+    const installmentsOutstanding = Math.max(0,
+      NumberUtils.safeSubtraction(totalInstallments, installmentsPaid)
+    );
+
+    const balanceOutstanding = NumberUtils.safeAddition(
+      outstandingPrincipal,
+      accruedInterest
+    );
+
+    const paymentCompletionRate = totalInstallments > 0
+      ? NumberUtils.safeMultiplication(
+        NumberUtils.safeDivision(installmentsPaid, totalInstallments),
+        100
+      )
+      : 0;
+
+    const principalRecoveryRate = disbursedAmount > 0
+      ? NumberUtils.safeMultiplication(
+        NumberUtils.safeDivision(principalRepaid, disbursedAmount),
+        100
+      )
+      : 0;
+
+    return {
+      totalInstallments,
+      installmentsPaid,
+      installmentsOutstanding,
+      principalRepaid: Number(principalRepaid.toFixed(2)),
+      balanceOutstanding: Number(balanceOutstanding.toFixed(2)),
+      paymentCompletionRate: Number(paymentCompletionRate.toFixed(2)),
+      principalRecoveryRate: Number(principalRecoveryRate.toFixed(2))
+    };
+  }
+
+  get totalCollateralValue(): number {
+    if (!this.collaterals || this.collaterals.length === 0) {
+      return 0;
+    }
+
+    const totalEffectiveValue = this.collaterals.reduce((total, collateral) => {
+      return total + collateral.effectiveValue;
+    }, 0);
+
+    return Math.round(totalEffectiveValue * 100) / 100;
+  }
+
+  getCollateralBreakdown() {
+    if (!this.collaterals || this.collaterals.length === 0) {
+      return {
+        totalOriginalValue: 0,
+        totalEffectiveValue: 0,
+        totalHaircutAmount: 0,
+        averageHaircutPercentage: 0,
+        collateralsByType: {},
+        needsRevaluation: 0
+      };
+    }
+
+    let totalOriginalValue = 0;
+    let totalEffectiveValue = 0;
+    let totalHaircutAmount = 0;
+    let needsRevaluationCount = 0;
+    const collateralsByType: Record<string, any> = {};
+
+    this.collaterals.forEach(collateral => {
+      const breakdown = collateral.getValuationBreakdown();
+
+      totalOriginalValue += breakdown.originalValue;
+      totalEffectiveValue += breakdown.effectiveValue;
+      totalHaircutAmount += breakdown.haircutAmount;
+
+      if (collateral.needsRevaluation()) {
+        needsRevaluationCount++;
+      }
+
+      const type = collateral.collateralType;
+      if (!collateralsByType[type]) {
+        collateralsByType[type] = {
+          count: 0,
+          originalValue: 0,
+          effectiveValue: 0,
+          haircutAmount: 0,
+          valuationPercentage: breakdown.valuationPercentage
+        };
+      }
+
+      collateralsByType[type].count++;
+      collateralsByType[type].originalValue += breakdown.originalValue;
+      collateralsByType[type].effectiveValue += breakdown.effectiveValue;
+      collateralsByType[type].haircutAmount += breakdown.haircutAmount;
+    });
+
+    const averageHaircutPercentage = totalOriginalValue > 0
+      ? (totalHaircutAmount / totalOriginalValue) * 100
+      : 0;
+
+    return {
+      totalOriginalValue: Math.round(totalOriginalValue * 100) / 100,
+      totalEffectiveValue: Math.round(totalEffectiveValue * 100) / 100,
+      totalHaircutAmount: Math.round(totalHaircutAmount * 100) / 100,
+      averageHaircutPercentage: Math.round(averageHaircutPercentage * 100) / 100,
+      collateralsByType,
+      needsRevaluation: needsRevaluationCount
+    };
+  }
+
+  getCollateralCoverageRatio(): number {
+    if (this.outstandingPrincipal <= 0) return 0;
+    return (this.totalCollateralValue / this.outstandingPrincipal) * 100;
+  }
+
+  isAdequatelyCollateralized(): boolean {
+    return this.getCollateralCoverageRatio() >= 100;
+  }
+
+  getCollateralDeficiency(): number {
+    const deficiency = this.outstandingPrincipal - this.totalCollateralValue;
+    return Math.max(0, Math.round(deficiency * 100) / 100);
+  }
+
+  get totalPaidAmount(): number {
+    return this.transactions?.reduce((total, transaction) =>
+      total + (transaction.amountPaid || 0), 0) || 0;
+  }
+
+  get totalPrincipalPaid(): number {
+    return this.transactions?.reduce((total, transaction) =>
+      total + (transaction.principalPaid || 0), 0) || 0;
+  }
+
+  get totalInterestPaid(): number {
+    return this.transactions?.reduce((total, transaction) =>
+      total + (transaction.interestPaid || 0), 0) || 0;
+  }
+
+  get remainingBalance(): number {
+    return this.outstandingPrincipal + this.accruedInterestToDate;
+  }
+
+  get loanToValueRatio(): number {
+    return this.totalCollateralValue > 0
+      ? (this.disbursedAmount / this.totalCollateralValue) * 100
+      : 0;
+  }
+
+  isOverdue(): boolean {
+    return this.daysInArrears > 0;
+  }
+
+  isPerforming(): boolean {
+    return this.daysInArrears <= 30 && this.status === LoanStatus.PERFORMING;
+  }
+
+  getClassificationCategory(): string {
+    if (this.daysInArrears <= 30) return "Normal/Standard";
+    if (this.daysInArrears <= 90) return "Watch";
+    if (this.daysInArrears <= 180) return "Substandard";
+    if (this.daysInArrears <= 365) return "Doubtful";
+    return "Loss";
+  }
+
+  getProvisioningRate(): number {
+    const category = this.getClassificationCategory();
+    switch (category) {
+      case "Normal/Standard": return 0.01;
+      case "Watch": return 0.05;
+      case "Substandard": return 0.25;
+      case "Doubtful": return 0.50;
+      case "Loss": return 1.00;
+      default: return 0.01;
+    }
+  }
+
+  calculateNetExposure(): number {
+    const netExposure = Math.max(0, this.outstandingPrincipal - this.totalCollateralValue);
+    return Math.round(netExposure * 100) / 100;
+  }
+
+  calculateProvisionRequired(): number {
+    const netExposure = this.calculateNetExposure();
+    const provisioningRate = this.getProvisioningRate();
+    const provision = netExposure * provisioningRate;
+    return Math.round(provision * 100) / 100;
+  }
+}
+
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  Index,
+  JoinColumn,
+  OneToMany,
+} from "typeorm";
+import { Loan } from "./Loan";
+import { Guarantor } from "./Guarantor";
+
+// ✅ NEW: Additional Document Interface
+export interface AdditionalDocument {
+  name: string;
+  url: string;
+  uploadedAt: string;
+  type: string;
+}
+
+export interface CollateralData {
+  collateralType: CollateralType;
+  description: string;
+  collateralValue: number;
+  guarantorName?: string;
+  guarantorPhone?: string;
+  guarantorAddress?: string;
+  proofOfOwnershipUrl?: string;
+  proofOfOwnershipType?: string;
+  ownerIdentificationUrl?: string;
+  valuationReportUrls?: string;
+  legalDocumentUrl?: string;
+  physicalEvidenceUrl?: string;
+  additionalDocumentsUrls: string | null;
+  valuationDate?: Date;
+  valuedBy?: string;
+  notes?: string;
+}
+
+export enum CollateralType {
+  MOVABLE = "movable",
+  IMMOVABLE = "immovable",
+  FINANCIAL = "financial",
+  GUARANTEE = "guarantee"
+}
+
+@Entity("loan_collaterals")
+@Index(["loanId"])
+@Index(["collateralId"], { unique: true })
+export class LoanCollateral {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ type: "varchar", length: 50, unique: true })
+  collateralId: string;
+
+  @Column({ type: "int" })
+  loanId: number;
+
+  @Column({
+    type: "enum",
+    enum: CollateralType
+  })
+  collateralType: CollateralType;
+
+  @Column({ type: "text" })
+  description: string;
+
+  @Column({ type: "decimal", precision: 15, scale: 2 })
+  collateralValue: number;
+
+  @Column({ type: "varchar", length: 100, nullable: true })
+  guarantorName: string | null;
+
+  @Column({ type: "varchar", length: 20, nullable: true })
+  guarantorPhone: string | null;
+
+  @Column({ type: "text", nullable: true })
+  guarantorAddress: string | null;
+
+  @OneToMany(() => Guarantor, (guarantor) => guarantor.collateral, {
+    cascade: ["remove"],
+  })
+  guarantors: Guarantor[];
+
+  // ========================================
+  // ✅ ENHANCED: Document URLs (support multiple)
+  // ========================================
+  
+  @Column({ type: "text", nullable: true })
+  proofOfOwnershipUrls: string | null;
+
+  @Column({ type: "text", nullable: true })
+  ownerIdentificationUrls: string | null;
+
+  @Column({ type: "text", nullable: true })
+  legalDocumentUrls: string | null;
+
+  @Column({ type: "text", nullable: true })
+  physicalEvidenceUrls: string | null;
+
+  @Column({ type: "text", nullable: true })
+  valuationReportUrls: string | null;
+
+  // ✅ NEW: Additional Documents (dynamic)
+  @Column({ type: "text", nullable: true })
+  additionalDocumentsUrls: string | null;
+
+  @Column({ type: "varchar", length: 100, nullable: true })
+  proofOfOwnershipType: string | null;
+
+  @Column({ type: "boolean", default: true })
+  isActive: boolean;
+
+  @Column({ type: "date", nullable: true })
+  valuationDate: Date | null;
+
+  @Column({ type: "varchar", length: 100, nullable: true })
+  valuedBy: string | null;
+
+  @Column({ type: "text", nullable: true })
+  notes: string | null;
+
+  // ========================================
+  // EXISTING: Extended Collateral Fields
+  // ========================================
+
+  @Column({ type: "varchar", length: 50, nullable: true })
+  accountNumber: string | null;
+
+  @Column({ type: "varchar", length: 100, nullable: true })
+  extendedCollateralType: string | null;
+
+  @Column({ type: "decimal", precision: 15, scale: 2, nullable: true })
+  extendedCollateralValue: number | null;
+
+  @Column({ type: "date", nullable: true })
+  collateralLastValuationDate: Date | null;
+
+  @Column({ type: "date", nullable: true })
+  collateralExpiryDate: Date | null;
+
+  @Column({ type: "int", nullable: true })
+  createdBy: number | null;
+
+  @Column({ type: "int", nullable: true })
+  updatedBy: number | null;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  // Relationships
+  @ManyToOne(() => Loan, (loan) => loan.collaterals)
+  @JoinColumn({ name: "loanId" })
+  loan: Loan;
+
+  // ========================================
+  // PHASE 1: Enhanced Collateral Valuation
+  // ========================================
+
+  getValuationPercentage(): number {
+    const rates = {
+      'movable': 0.60,      // Vehicles, equipment - 60%
+      'immovable': 0.80,    // Real estate - 80%
+      'financial': 1.00,    // Cash, bonds - 100%
+      'guarantee': 0.20     // Personal guarantees - 20%
+    };
+    return rates[this.collateralType] || 0.50;
+  }
+
+  get effectiveValue(): number {
+    const valuationPercentage = this.getValuationPercentage();
+    const baseValue = this.extendedCollateralValue || this.collateralValue;
+    const effectiveVal = baseValue * valuationPercentage;
+    return Math.round(effectiveVal * 100) / 100;
+  }
+
+  getValuationBreakdown(): {
+    originalValue: number;
+    extendedValue: number | null;
+    valuationPercentage: number;
+    haircutPercentage: number;
+    haircutAmount: number;
+    effectiveValue: number;
+    collateralType: string;
+  } {
+    const valuationPercentage = this.getValuationPercentage();
+    const haircutPercentage = (1 - valuationPercentage) * 100;
+    const baseValue = this.extendedCollateralValue || this.collateralValue;
+    const haircutAmount = baseValue * (1 - valuationPercentage);
+
+    return {
+      originalValue: this.collateralValue,
+      extendedValue: this.extendedCollateralValue,
+      valuationPercentage: valuationPercentage * 100,
+      haircutPercentage: Math.round(haircutPercentage * 100) / 100,
+      haircutAmount: Math.round(haircutAmount * 100) / 100,
+      effectiveValue: this.effectiveValue,
+      collateralType: this.collateralType
+    };
+  }
+
+  // ========================================
+  // ✅ NEW: Additional Documents Management
+  // ========================================
+
+  getAdditionalDocuments(): AdditionalDocument[] {
+    if (!this.additionalDocumentsUrls) return [];
+    
+    try {
+      const parsed = JSON.parse(this.additionalDocumentsUrls);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  addAdditionalDocument(name: string, url: string): void {
+    const currentDocs = this.getAdditionalDocuments();
+    
+    currentDocs.push({
+      name,
+      url,
+      uploadedAt: new Date().toISOString(),
+      type: 'additional'
+    });
+
+    this.additionalDocumentsUrls = JSON.stringify(currentDocs);
+  }
+
+  removeAdditionalDocument(url: string): void {
+    const currentDocs = this.getAdditionalDocuments();
+    const filtered = currentDocs.filter(doc => doc.url !== url);
+    this.additionalDocumentsUrls = filtered.length > 0 
+      ? JSON.stringify(filtered) 
+      : null;
+  }
+
+  // ========================================
+  // ✅ ENHANCED: Document URL Getters
+  // ========================================
+
+  getDocumentUrls(field: 'proofOfOwnership' | 'ownerIdentification' | 'legalDocument' | 'physicalEvidence' | 'valuationReport'): Array<{ url: string; uploadedAt: string; type: string }> {
+    const fieldMap = {
+      proofOfOwnership: this.proofOfOwnershipUrls,
+      ownerIdentification: this.ownerIdentificationUrls,
+      legalDocument: this.legalDocumentUrls,
+      physicalEvidence: this.physicalEvidenceUrls,
+      valuationReport: this.valuationReportUrls
+    };
+
+    const urls = fieldMap[field];
+    if (!urls) return [];
+    
+    try {
+      const parsed = JSON.parse(urls);
+      if (!Array.isArray(parsed)) return [];
+
+      return parsed.map((item: any) => {
+        if (typeof item === 'string') {
+          return { url: item, uploadedAt: '', type: field };
+        }
+        return {
+          url: item?.url || '',
+          uploadedAt: item?.uploadedAt || '',
+          type: item?.type || field
+        };
+      });
+    } catch {
+      return [];
+    }
+  }
+
+  addDocumentUrl(field: string, url: string): void {
+    const fieldMap: any = {
+      proofOfOwnership: 'proofOfOwnershipUrls',
+      ownerIdentification: 'ownerIdentificationUrls',
+      legalDocument: 'legalDocumentUrls',
+      physicalEvidence: 'physicalEvidenceUrls',
+      valuationReport: 'valuationReportUrls'
+    };
+
+    const actualField = fieldMap[field];
+    if (!actualField) return;
+
+    const currentUrls = this.getDocumentUrls(field as any);
+    if (currentUrls.length >= 5) {
+      throw new Error(`Maximum of 5 documents allowed for ${field}`);
+    }
+
+    currentUrls.push({
+      url,
+      uploadedAt: new Date().toISOString(),
+      type: field
+    });
+
+    (this as any)[actualField] = JSON.stringify(currentUrls);
+  }
+
+  // ========================================
+  // EXISTING: Business methods
+  // ========================================
+
+  isValidCollateral(): boolean {
+    return this.isActive && this.collateralValue > 0;
+  }
+
+  getCoverageRatio(loanAmount: number): number {
+    return loanAmount > 0 ? (this.effectiveValue / loanAmount) * 100 : 0;
+  }
+
+  needsRevaluation(monthsThreshold: number = 12): boolean {
+    const lastValuation = this.collateralLastValuationDate || this.valuationDate;
+    
+    if (!lastValuation) return true;
+
+    const valuationDate = lastValuation instanceof Date
+      ? lastValuation
+      : new Date(lastValuation);
+
+    const monthsSinceValuation =
+      (new Date().getTime() - valuationDate.getTime()) / (1000 * 60 * 60 * 24 * 30);
+
+    return monthsSinceValuation > monthsThreshold;
+  }
+
+  getValuationAge(): number {
+    const lastValuation = this.collateralLastValuationDate || this.valuationDate;
+    
+    if (!lastValuation) return -1;
+
+    const valuationDate = lastValuation instanceof Date
+      ? lastValuation
+      : new Date(lastValuation);
+
+    const months =
+      (new Date().getTime() - valuationDate.getTime()) / (1000 * 60 * 60 * 24 * 30);
+
+    return Math.floor(months);
+  }
+
+  isExpired(): boolean {
+    if (!this.collateralExpiryDate) return false;
+
+    const expiryDate = this.collateralExpiryDate instanceof Date
+      ? this.collateralExpiryDate
+      : new Date(this.collateralExpiryDate);
+
+    return expiryDate < new Date();
+  }
+
+  getDaysUntilExpiry(): number | null {
+    if (!this.collateralExpiryDate) return null;
+
+    const expiryDate = this.collateralExpiryDate instanceof Date
+      ? this.collateralExpiryDate
+      : new Date(this.collateralExpiryDate);
+
+    const diffTime = expiryDate.getTime() - new Date().getTime();
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  }
+}
+
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  Index,
+} from "typeorm";
+import { Loan } from "./Loan";
+import { LoanCollateral } from "./LoanCollateral";
+import { BorrowerProfile } from "./BorrowerProfile";
+import { Organization } from "./Organization";
+
+@Entity("guarantors")
+@Index(["loanId", "collateralId"])
+@Index(["borrowerId"])
+@Index(["organizationId"])
+export class Guarantor {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ type: "int" })
+  loanId: number;
+
+  @Column({ type: "int" })
+  collateralId: number;
+
+  @Column({ type: "int" })
+  borrowerId: number;
+
+  @Column({ type: "int" })
+  organizationId: number;
+
+  // ============ ORIGINAL FIELDS - 100% MAINTAINED ============
+  @Column({ type: "varchar", length: 100 })
+  name: string;
+
+  @Column({ type: "varchar", length: 20 })
+  phone: string;
+
+  @Column({ type: "text" })
+  address: string;
+
+  @Column({ type: "decimal", precision: 15, scale: 2 })
+  guaranteedAmount: number;
+
+  @Column({ type: "varchar", length: 50 })
+  collateralType: string;
+
+  @Column({ type: "text", nullable: true })
+  collateralDescription: string | null;
+
+@Column({ type: "text", nullable: true })
+  identificationDocumentUrls: string | null;
+
+  getIdentificationDocuments(): any[] {
+    if (!this.identificationDocumentUrls) return [];
+    
+    try {
+      const parsed = JSON.parse(this.identificationDocumentUrls);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  //  addIdentificationDocument(url: string): void {
+  //   const currentDocs = this.getIdentificationDocuments();
+    
+  //   if (currentDocs.length >= 5) {
+  //     throw new Error('Maximum of 5 identification documents allowed');
+  //   }
+
+  //   currentDocs.push({
+  //     url,
+  //     uploadedAt: new Date().toISOString(),
+  //     type: 'identification'
+  //   });
+
+  //   this.identificationDocumentUrls = JSON.stringify(currentDocs);
+  // }
+
+  @Column({ type: "boolean", default: true })
+  isActive: boolean;
+
+  @Column({ type: "int", nullable: true })
+  createdBy: number | null;
+
+  @Column({ type: "int", nullable: true })
+  updatedBy: number | null;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  // ============ EXTENDED GUARANTOR FIELDS - ALL NULL BY DEFAULT ============
+  
+  // Basic Guarantor Information
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  accountNumber: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  guarantorType: string | null; // 'individual' or 'institution'
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  surname: string | null; // For individuals
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  institutionName: string | null; // For institutions
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  forename1: string | null; // For individuals
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  tradingName: string | null; // For institutions
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  forename2: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  forename3: string | null;
+
+  // Identification
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  nationalId: string | null; // For individuals
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  companyRegNo: string | null; // For institutions
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  passportNo: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  nationality: string | null;
+
+  @Column({ type: 'date', nullable: true })
+  dateOfBirth: Date | null; // For individuals
+
+  @Column({ type: 'date', nullable: true })
+  companyRegistrationDate: Date | null; // For institutions
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  placeOfBirth: string | null;
+
+  // Postal Address
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  postalAddressLine1: string | null;
+
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  postalAddressLine2: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  town: string | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  postalCode: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  country: string | null;
+
+  // Contact Information
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  workTelephone: string | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  homeTelephone: string | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  mobileTelephone: string | null;
+
+
+  // ============ ORIGINAL RELATIONSHIPS - 100% MAINTAINED ============
+  @ManyToOne(() => Loan, (loan) => loan.guarantors)
+  @JoinColumn({ name: "loanId" })
+  loan: Loan;
+
+  @ManyToOne(() => LoanCollateral, (collateral) => collateral.guarantors)
+  @JoinColumn({ name: "collateralId" })
+  collateral: LoanCollateral;
+
+  @ManyToOne(() => BorrowerProfile, (borrower) => borrower.guarantors)
+  @JoinColumn({ name: "borrowerId" })
+  borrower: BorrowerProfile;
+
+  @ManyToOne(() => Organization, (organization) => organization.guarantors)
+  @JoinColumn({ name: "organizationId" })
+  organization: Organization;
+
+  // getIdentificationDocuments(): string[] {
+  //   if (!this.identificationDocumentUrls) return [];
+    
+  //   try {
+  //     return JSON.parse(this.identificationDocumentUrls);
+  //   } catch {
+  //     return [];
+  //   }
+  // }
+
+   addIdentificationDocument(url: string): void {
+    const currentDocs = this.getIdentificationDocuments();
+    
+    if (currentDocs.length >= 5) {
+      throw new Error('Maximum of 5 identification documents allowed');
+    }
+
+    currentDocs.push({
+      url,
+      uploadedAt: new Date().toISOString(),
+      type: 'identification'
+    });
+
+    this.identificationDocumentUrls = JSON.stringify(currentDocs);
+  }
+  // ============ ORIGINAL BUSINESS METHODS - 100% MAINTAINED ============
+  getGuaranteeCoverage(loanAmount: number): number {
+    return loanAmount > 0 ? (this.guaranteedAmount / loanAmount) * 100 : 0;
+  }
+
+  isValidGuarantor(): boolean {
+    return this.isActive && 
+           this.name?.trim().length > 0 && 
+           this.phone?.trim().length > 0 && 
+           this.guaranteedAmount > 0;
+  }
+
+  // ============ NEW HELPER METHODS ============
+  getFullName(): string {
+    if (this.guarantorType === 'institution') {
+      return this.institutionName || this.name;
+    }
+    
+    const parts = [this.surname, this.forename1, this.forename2, this.forename3].filter(Boolean);
+    return parts.length > 0 ? parts.join(' ') : this.name;
+  }
+
+  isExtended(): boolean {
+    return !!(this.accountNumber || this.guarantorType);
+  }
+}
+
+// ============ NEW INTERFACE FOR EXTENDED DATA ============
+export interface ExtendedGuarantorData {
+  // Basic Information
+  accountNumber?: string;
+  guarantorType?: 'individual' | 'institution';
+  
+  // Individual fields
+  surname?: string;
+  forename1?: string;
+  forename2?: string;
+  forename3?: string;
+  nationalId?: string;
+  dateOfBirth?: Date;
+  placeOfBirth?: string;
+  
+  // Institution fields
+  institutionName?: string;
+  tradingName?: string;
+  companyRegNo?: string;
+  companyRegistrationDate?: Date;
+  
+  // Common fields
+  passportNo?: string;
+  nationality?: string;
+  
+  // Postal Address
+  postalAddressLine1?: string;
+  postalAddressLine2?: string;
+  town?: string;
+  postalCode?: string;
+  country?: string;
+  
+  // Contact
+  workTelephone?: string;
+  homeTelephone?: string;
+  mobileTelephone?: string;
+  identificationDocuments?: string[];
+}
+
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  OneToMany,
+  Index,
+  JoinColumn,
+} from "typeorm";
+import { Organization } from "./Organization";
+import { Loan } from "./Loan";
+import { Guarantor } from "./Guarantor";
+import { BouncedCheque } from "./BouncedCheque";
+
+export interface Address {
+  district?: string;
+  sector?: string;
+  cell?: string;
+  village?: string;
+  country?: string;
+  province?: string;
+  street?: string;
+  houseNumber?: string;
+  poBox?: string;
+
+  // Extended postal address fields
+  postalLine1?: string;
+  postalLine2?: string;
+  postalCode?: string;
+  physicalLine1?: string;
+  physicalLine2?: string;
+  physicalPostalCode?: string;
+  plotNumber?: string;
+  residenceType?: string;
+}
+
+export enum Gender {
+  MALE = "male",
+  FEMALE = "female",
+  OTHER = "other"
+}
+
+export enum MaritalStatus {
+  SINGLE = "single",
+  MARRIED = "married",
+  DIVORCED = "divorced",
+  WIDOWED = "widowed"
+}
+
+export enum RelationshipType {
+  STAFF = "staff",
+  DIRECTOR = "director",
+  SHAREHOLDER = "shareholder",
+  NONE = "none",
+  NEW_BORROWER = "new_borrower",
+  REPEAT_BORROWER = "repeat_borrower",
+  RETURNING_BORROWER = "returning_borrower"
+}
+
+@Entity("borrower_profiles")
+@Index(["organizationId", "nationalId"], { unique: true })
+@Index(["organizationId", "borrowerId"], { unique: true })
+export class BorrowerProfile {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ type: "varchar", length: 50, unique: true })
+  borrowerId: string;
+
+  // ORIGINAL FIELDS - 100% MAINTAINED
+  @Column({ type: "varchar", length: 100 })
+  firstName: string;
+
+  @Column({ type: "varchar", length: 100 })
+  lastName: string;
+
+  @Column({ type: "varchar", length: 100, nullable: true })
+  middleName: string | null;
+
+  get fullName(): string {
+    return this.middleName
+      ? `${this.firstName} ${this.middleName} ${this.lastName}`
+      : `${this.firstName} ${this.lastName}`;
+  }
+
+  @Column({ type: "varchar", length: 16 , nullable: true })
+  nationalId: string;
+
+  @Column({ type: "varchar", length: 20, nullable: true })
+  primaryPhone: string;
+
+  @Column({ type: "varchar", length: 20, nullable: true })
+  alternativePhone: string | null;
+
+  @Column({
+    type: "enum",
+    enum: Gender
+  })
+  gender: Gender;
+
+  @Column({
+    type: "enum",
+    enum: RelationshipType,
+    default: RelationshipType.NONE
+  })
+  relationshipWithNDFSP: RelationshipType;
+
+  @Column({
+    type: "enum",
+    enum: MaritalStatus
+  })
+  maritalStatus: MaritalStatus;
+
+  @Column({ type: "int", default: 0 })
+  previousLoansPaidOnTime: number;
+
+  @Column({ type: "text", nullable: true })
+  defaultLoanPurpose: string | null;
+
+  @Column({ type: "date", nullable: true })
+  dateOfBirth: Date;
+
+  @Column({ type: "varchar", length: 255, nullable: true })
+  email: string | null;
+
+  @Column({ type: "jsonb" })
+  address: Address;
+  @OneToMany(() => Guarantor, (guarantor) => guarantor.borrower, {
+    cascade: ["remove"],
+  })
+  guarantors: Guarantor[];
+
+
+  @OneToMany(() => BouncedCheque, (bouncedCheques) => bouncedCheques.loan, {
+    cascade: ["remove"],
+  })
+  bouncedCheques: BouncedCheque[];
+
+  @Column({ type: "varchar", length: 100, nullable: true })
+  occupation: string | null;
+
+  @Column({ type: "decimal", precision: 15, scale: 2, nullable: true })
+  monthlyIncome: number | null;
+
+  @Column({ type: "text", nullable: true })
+  incomeSource: string | null;
+
+  @Column({ type: "boolean", default: true })
+  isActive: boolean;
+
+  @Column({ type: "text", nullable: true })
+  notes: string | null;
+
+  @Column({ type: "int" })
+  organizationId: number;
+
+  @Column({ type: "int", nullable: true })
+  createdBy: number | null;
+
+  @Column({ type: "int", nullable: true })
+  updatedBy: number | null;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  // ============ EXTENDED FIELDS - ALL NULL BY DEFAULT ============
+
+  // Personal Details Extensions
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  salutation: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  forename2: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  forename3: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  passportNo: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  nationality: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  taxNumber: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  drivingLicenseNumber: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  socialSecurityNumber: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  healthInsuranceNumber: string | null;
+
+  @Column({ type: 'int', nullable: true })
+  dependantsCount: number | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  placeOfBirth: string | null;
+
+    @Column({ type: "varchar", length: 100, nullable: true })
+  spouseFirstName: string | null;
+
+  @Column({ type: "varchar", length: 100, nullable: true })
+  spouseLastName: string | null;
+
+  @Column({ type: "varchar", length: 16, nullable: true })
+  spouseNationalId: string | null;
+
+  @Column({ type: "varchar", length: 20, nullable: true })
+  spousePhone: string | null;
+
+  @Column({ type: "varchar", length: 255, nullable: true })
+  spouseEmail: string | null;
+
+  // ✅ NEW: Document URLs
+  @Column({ type: "text", nullable: true })
+  marriageCertificateUrls: string | null;
+
+  @Column({ type: "text", nullable: true })
+  spouseCrbReportUrls: string | null;
+
+  @Column({ type: "text", nullable: true })
+  witnessCrbReportUrls: string | null;
+
+  @Column({ type: "text", nullable: true })
+  borrowerCrbReportUrls: string | null;
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  workPhone: string | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  homePhone: string | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  fax: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  employerName: string | null;
+
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  employerAddress1: string | null;
+
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  employerAddress2: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  employerTown: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  employerCountry: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  incomeFrequency: string | null;
+
+  // Group & Account Details
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  groupName: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  groupNumber: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  accountNumber: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  oldAccountNumber: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  accountType: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  accountStatus: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  classification: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  accountOwner: string | null;
+
+  @Column({ type: 'jsonb', nullable: true })
+  jointLoanParticipants: string[] | null;
+
+  @Column({ type: 'varchar', length: 10, nullable: true })
+  currencyType: string | null;
+
+  @Column({ type: 'date', nullable: true })
+  dateOpened: Date | null;
+
+  @Column({ type: 'int', nullable: true })
+  termsDuration: number | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  repaymentTerm: string | null;
+
+  // Financial & Loan Information
+  @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true })
+  creditLimit: number | null;
+
+  @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true })
+  currentBalance: number | null;
+
+  @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true })
+  availableCredit: number | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  currentBalanceIndicator: string | null;
+
+  @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true })
+  scheduledMonthlyPayment: number | null;
+
+  @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true })
+  actualPaymentAmount: number | null;
+
+  @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true })
+  amountPastDue: number | null;
+
+  @Column({ type: 'int', nullable: true })
+  installmentsInArrears: number | null;
+
+  @Column({ type: 'int', nullable: true })
+  daysInArrears: number | null;
+
+  @Column({ type: 'date', nullable: true })
+  dateClosed: Date | null;
+
+  @Column({ type: 'date', nullable: true })
+  lastPaymentDate: Date | null;
+
+  @Column({ type: 'float', nullable: true })
+  interestRate: number | null;
+
+  @Column({ type: 'date', nullable: true })
+  firstPaymentDate: Date | null;
+
+  // Additional Categorization
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  nature: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  category: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  sectorOfActivity: string | null;
+
+  @Column({ type: 'date', nullable: true })
+  approvalDate: Date | null;
+
+  @Column({ type: 'date', nullable: true })
+  finalPaymentDate: Date | null;
+
+  // ORIGINAL RELATIONSHIPS - 100% MAINTAINED
+  @ManyToOne(() => Organization, (organization) => organization.borrowerProfiles)
+  @JoinColumn({ name: "organizationId" })
+  organization: Organization;
+
+  @OneToMany(() => Loan, (loan) => loan.borrower, {
+    cascade: ["remove"],
+  })
+  loans: Loan[];
+
+  // ORIGINAL COMPUTED PROPERTIES - 100% MAINTAINED
+  get age(): number {
+    const today = new Date();
+    const birthDate = new Date(this.dateOfBirth);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+
+    return age;
+  }
+
+  isEligibleForLoan(): boolean {
+    return this.isActive && this.age >= 18 && this.age <= 100;
+  }
+
+  getCreditScore(): number {
+    const baseScore = 500;
+    const paidLoansBonus = this.previousLoansPaidOnTime * 50;
+    const relationshipBonus = [
+      RelationshipType.STAFF,
+      RelationshipType.DIRECTOR,
+      RelationshipType.SHAREHOLDER
+    ].includes(this.relationshipWithNDFSP) ? 100 : 0;
+
+    return Math.min(850, baseScore + paidLoansBonus + relationshipBonus);
+  }
+
+  isValidPhoneFormat(phone: string): boolean {
+    return /^\+?[1-9]\d{1,14}$/.test(phone);
+  }
+
+  isValidNationalId(): boolean {
+    return /^\d{16}$/.test(this.nationalId);
+  }
+
+  getTable2_1_Data(): Record<string, any> {
+    return {
+      no: this.id,
+      namesOfBorrowers: this.fullName,
+      idOfTheBorrower: this.nationalId,
+      telephoneNumber: this.primaryPhone,
+      gender: this.gender,
+      relationshipWithNDFSP: this.relationshipWithNDFSP,
+      maritalStatus: this.maritalStatus,
+      previousLoansPaidOnTime: this.previousLoansPaidOnTime > 0,
+      purposeOfTheLoan: this.defaultLoanPurpose || ''
+    };
+  }
+
+
+
+  getLocationDetails(): Record<string, any> {
+    return {
+      district: this.address.district || '',
+      sector: this.address.sector || '',
+      cell: this.address.cell || '',
+      village: this.address.village || ''
+    };
+  }
+}
+
+// ORIGINAL INTERFACE - 100% MAINTAINED
+export interface BorrowerProfileData {
+  firstName: string;
+  lastName: string;
+  middleName?: string;
+  nationalId: string;
+  gender: Gender;
+  dateOfBirth: Date;
+  maritalStatus: MaritalStatus;
+  primaryPhone: string;
+  alternativePhone?: string;
+  email?: string;
+  relationshipWithNDFSP?: RelationshipType;
+  previousLoansPaidOnTime?: number;
+  address: Address;
+  occupation?: string;
+  monthlyIncome?: number;
+  incomeSource?: string;
+  notes?: string;
+}
+
+// NEW INTERFACE FOR EXTENDED DATA
+export interface ExtendedBorrowerData {
+  // Personal Details
+  salutation?: string;
+  forename2?: string;
+  forename3?: string;
+  passportNo?: string;
+  nationality?: string;
+  taxNumber?: string;
+  drivingLicenseNumber?: string;
+  socialSecurityNumber?: string;
+  healthInsuranceNumber?: string;
+  dependantsCount?: number;
+  placeOfBirth?: string;
+
+  // Contact & Employment
+  workPhone?: string;
+  homePhone?: string;
+  fax?: string;
+  employerName?: string;
+  employerAddress1?: string;
+  employerAddress2?: string;
+  employerTown?: string;
+  employerCountry?: string;
+  incomeFrequency?: string;
+
+  // Group & Account
+  groupName?: string;
+  groupNumber?: string;
+  accountNumber?: string;
+  oldAccountNumber?: string;
+  accountType?: string;
+  accountStatus?: string;
+  classification?: string;
+  accountOwner?: string;
+  jointLoanParticipants?: string[];
+  currencyType?: string;
+  dateOpened?: Date;
+  termsDuration?: number;
+  repaymentTerm?: string;
+
+  // Financial
+  creditLimit?: number;
+  currentBalance?: number;
+  availableCredit?: number;
+  currentBalanceIndicator?: string;
+  scheduledMonthlyPayment?: number;
+  actualPaymentAmount?: number;
+  amountPastDue?: number;
+  installmentsInArrears?: number;
+  daysInArrears?: number;
+  dateClosed?: Date;
+  lastPaymentDate?: Date;
+  interestRate?: number;
+  firstPaymentDate?: Date;
+
+  // Categorization
+  nature?: string;
+  category?: string;
+  sectorOfActivity?: string;
+  approvalDate?: Date;
+  finalPaymentDate?: Date;
+}
+
+
+// @ts-nocheck
+import { Router } from "express";
+import { body, param, query } from "express-validator";
+import LoanApplicationController from "../controllers/loanApplicationController";
+import { authenticate, checkFirstLogin } from "../middleware/auth";
+import {  handleValidationErrors } from "../middleware/validation";
+import { tenantIsolationMiddleware, validateOrganizationOwnership } from "../middleware/tenantIsolation";
+import { uploadFields, handleMulterError } from "../helpers/multer";
+import { Gender, MaritalStatus, RelationshipType } from "../entities/BorrowerProfile";
+import { LoanStatus, InterestMethod, RepaymentFrequency, IncomeFrequency, BusinessType, EconomicSector, BorrowerType, InstitutionType } from "../entities/Loan";
+
+import { ReviewDecision } from "../entities/LoanReview";
+import { WorkflowStep } from "../entities/LoanWorkflow";
+import { CollateralType } from "../entities/LoanCollateral";
+const router = Router({ mergeParams: true });
+
+router.use(authenticate);
+router.use(checkFirstLogin);
+router.use(tenantIsolationMiddleware);
+router.use(validateOrganizationOwnership);
+
+router.post(
+  "/:loanId/reviews",
+  [
+    param("loanId")
+      .isInt({ min: 1 })
+      .withMessage("Loan ID must be a positive integer"),
+    
+    body("reviewMessage")
+      .trim()
+      .isLength({ min: 10, max: 2000 })
+      .withMessage("Review message must be between 10 and 2000 characters"),
+
+    handleValidationErrors,
+  ],
+  LoanApplicationController.addLoanReview
+);
+
+
+router.get(
+  "/:loanId/guarantors",
+  [
+    param("loanId")
+      .isInt({ min: 1 })
+      .withMessage("Loan ID must be a positive integer"),
+
+    handleValidationErrors,
+  ],
+  LoanApplicationController.getLoanGuarantors
+);
+
+
+router.put(
+  "/guarantors/:guarantorId",
+  [
+    param("guarantorId")
+      .isInt({ min: 1 })
+      .withMessage("Guarantor ID must be a positive integer"),
+    
+    body("name")
+      .optional()
+      .trim()
+      .isLength({ min: 2, max: 100 })
+      .withMessage("Name must be between 2 and 100 characters"),
+    
+    body("phone")
+      .optional()
+      .trim()
+      .isLength({ min: 10, max: 20 })
+      .withMessage("Phone must be between 10 and 20 characters"),
+    
+    body("guaranteedAmount")
+      .optional()
+      .isFloat({ min: 0 })
+      .withMessage("Guaranteed amount must be a positive number"),
+
+    handleValidationErrors,
+  ],
+  LoanApplicationController.updateGuarantor
+);
+
+
+router.get(
+  "/:loanId/reviews",
+  [
+    param("loanId")
+      .isInt({ min: 1 })
+      .withMessage("Loan ID must be a positive integer"),
+
+    handleValidationErrors,
+  ],
+  LoanApplicationController.getLoanReviews
+);
+
+
+router.get(
+  "/",
+  [
+    query("page")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Page must be a positive integer"),
+    
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage("Limit must be between 1 and 100"),
+
+    query("search")
+      .optional()
+      .trim()
+      .isLength({ max: 100 })
+      .withMessage("Search query must not exceed 100 characters"),
+
+    query("status")
+      .optional()
+      .isIn(Object.values(LoanStatus))
+      .withMessage(`Status must be one of: ${Object.values(LoanStatus).join(", ")}`),
+
+    handleValidationErrors,
+  ],
+  LoanApplicationController.getLoanApplications
+);
+// ============================================================================
+// ✅ NEW: Approve Loan Application
+// ============================================================================
+
+
+router.post(
+  "/",
+  uploadFields,
+  handleMulterError,
+  [
+    
+    body("address")
+      .custom((value) => {
+        let addressObj = value;
+        if (typeof value === 'string') {
+          try { 
+            addressObj = JSON.parse(value); 
+          } catch (e) { 
+            throw new Error('Address must be valid JSON'); 
+          }
+        }
+        if (typeof addressObj !== 'object') {
+          throw new Error('Address must be an object');
+        }
+        return true;
+      }),
+
+    // ✅ ENHANCED: Loan validation with new fields
+    body("purposeOfLoan")
+      .trim()
+      .isLength({ min: 5, max: 500 })
+      .withMessage("Purpose of loan must be between 5 and 500 characters"),
+    
+    body("branchName")
+      .trim()
+      .notEmpty()
+      .withMessage("Branch name is required"),
+    
+    // ✅ REPLACED: loanOfficer with businessOfficer
+    body("businessOfficer")
+      .trim()
+      .notEmpty()
+      .withMessage("Business officer is required"),
+    
+    body("disbursedAmount")
+      .isFloat({ min: 1000 })
+      .withMessage("Loan amount must be at least 1,000 RWF"),
+
+    // ✅ NEW: Income source validation with "Other" support
+    body("incomeSource")
+      .optional()
+      .isString()
+      .withMessage("Income source must be a string"),
+    
+    body("otherIncomeSource")
+      .optional()
+      .trim()
+      .isLength({ max: 200 })
+      .withMessage("Other income source must be less than 200 characters")
+      .custom((value, { req }) => {
+        // If incomeSource is "other", otherIncomeSource is required
+        if (req.body.incomeSource === "other" && (!value || value.trim() === "")) {
+          throw new Error("Please specify the income source when 'Other' is selected");
+        }
+        return true;
+      }),
+    
+    // ✅ NEW: Income frequency validation
+    body("incomeFrequency")
+      .optional()
+      .isIn(Object.values(IncomeFrequency))
+      .withMessage(`Income frequency must be one of: ${Object.values(IncomeFrequency).join(", ")}`),
+    
+    // ✅ NEW: Income amount validation
+    body("incomeAmount")
+      .optional()
+      .isFloat({ min: 0 })
+      .withMessage("Income amount must be a positive number"),
+
+    // Business type and economic sector (optional)
+    body("businessType")
+      .optional()
+      .isIn(Object.values(BusinessType))
+      .withMessage("Invalid business type"),
+    
+    body("economicSector")
+      .optional()
+      .isIn(Object.values(EconomicSector))
+      .withMessage("Invalid economic sector"),
+    
+    // Collateral validation
+    body("collateralType")
+      .optional()
+      .isIn(Object.values(CollateralType))
+      .withMessage("Invalid collateral type"),
+    
+    body("collateralValue")
+      .optional()
+      .isFloat({ min: 0, max: 9999999999999.99 })
+      .withMessage("Collateral value must be between 0 and 9,999,999,999,999.99"),
+    
+    // Guarantor validation
+    body("guarantorName")
+      .optional()
+      .trim()
+      .isLength({ max: 100 })
+      .withMessage("Guarantor name must be less than 100 characters"),
+    
+    body("guarantorPhone")
+      .optional()
+      .trim()
+      .isLength({ max: 20 })
+      .withMessage("Guarantor phone must be less than 20 characters"),
+
+    handleValidationErrors,
+  ],
+  LoanApplicationController.createLoanApplication
+);
+
+export default router;
+
+// @ts-nocheck
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import type { Request } from "express";
+import type { File } from "express";
+
+// Comprehensive list of allowed file extensions
+const allowedExtensions = {
+  images: [
+    ".jpg", ".jpeg", ".png", ".gif", ".tif", ".webp", 
+    ".bmp", ".svg", ".ico", ".heic", ".tiff", ".psd", 
+    ".ai", ".eps", ".raw", ".avif", ".jp2"
+  ],
+  audio: [
+    ".mp3", ".wav", ".flac", ".aac", ".ogg", ".wma", 
+    ".m4a", ".opus", ".aiff", ".alac", ".amr", ".mid", 
+    ".midi", ".mp2", ".mpa", ".ra", ".weba"
+  ],
+  video: [
+    ".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv", 
+    ".wmv", ".m4v", ".3gp", ".mpg", ".mpeg", ".m2v", 
+    ".m4p", ".m4v", ".mp2", ".mpe", ".mpv", ".mxf", 
+    ".nsv", ".ogv", ".qt", ".rm", ".rmvb", ".svi", 
+    ".vob", ".yuv"
+  ],
+  documents: [
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", 
+    ".pptx", ".txt", ".rtf", ".csv", ".zip", ".rar", 
+    ".7z", ".gz", ".tar", ".bz2", ".dmg", ".iso", 
+    ".epub", ".mobi", ".pages", ".numbers", ".key", 
+    ".odt", ".ods", ".odp", ".md", ".json", ".xml", 
+    ".html", ".htm", ".log", ".sql", ".db", ".dat", 
+    ".apk", ".exe", ".dll", ".msi"
+  ],
+  fonts: [
+    ".ttf", ".otf", ".woff", ".woff2", ".eot", ".sfnt"
+  ],
+  archives: [
+    ".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", 
+    ".xz", ".iso", ".dmg", ".pkg", ".deb", ".rpm"
+  ],
+  executables: [
+    ".exe", ".msi", ".dmg", ".pkg", ".deb", ".rpm", 
+    ".apk", ".app", ".bat", ".cmd", ".sh", ".bin"
+  ],
+  code: [
+    ".js", ".ts", ".jsx", ".tsx", ".py", ".java", 
+    ".c", ".cpp", ".h", ".cs", ".php", ".rb", 
+    ".go", ".swift", ".kt", ".scala", ".sh", ".pl", 
+    ".lua", ".sql", ".json", ".xml", ".yml", ".yaml", 
+    ".ini", ".cfg", ".conf", ".env"
+  ]
+};
+
+// Flatten all allowed extensions for quick lookup
+const allAllowedExtensions = [
+  ...allowedExtensions.images,
+  ...allowedExtensions.audio,
+  ...allowedExtensions.video,
+  ...allowedExtensions.documents,
+  ...allowedExtensions.fonts,
+  ...allowedExtensions.archives,
+  ...allowedExtensions.executables,
+  ...allowedExtensions.code
+];
+
+const ensureDirectoryExists = (dir: string) => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+};
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    let folder = "uploads/others";
+    
+    if (file.mimetype.startsWith("image/")) {
+      folder = "uploads/images";
+    } else if (file.mimetype.startsWith("audio/")) {
+      folder = "uploads/audio";
+    } else if (file.mimetype.startsWith("video/")) {
+      folder = "uploads/video";
+    } else if (file.mimetype.startsWith("text/") || 
+               file.mimetype.includes("document") || 
+               file.mimetype.includes("pdf")) {
+      folder = "uploads/documents";
+    } else if (file.mimetype.includes("font")) {
+      folder = "uploads/fonts";
+    } else if (file.mimetype.includes("zip") || 
+               file.mimetype.includes("compressed")) {
+      folder = "uploads/archives";
+    } else if (file.mimetype.includes("application/x-msdownload") || 
+               file.mimetype.includes("application/x-executable")) {
+      folder = "uploads/executables";
+    } else if (file.mimetype.includes("application/javascript") || 
+               file.mimetype.includes("text/x-")) {
+      folder = "uploads/code";
+    }
+
+    ensureDirectoryExists(folder);
+    cb(null, folder);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}${ext}`;
+    cb(null, fileName);
+  },
+});
+
+const fileFilter = (req: Request, file: File, cb: multer.FileFilterCallback) => {
+  const ext = path.extname(file.originalname).toLowerCase();
+  
+  if (allAllowedExtensions.includes(ext)) {
+    return cb(null, true);
+  }
+
+  const error = new Error(
+    `Invalid file type: ${ext}. Allowed types: ${Object.keys(allowedExtensions).join(", ")}.`
+  );
+  cb(error, false);
+};
+
+// Enhanced multer configuration with better limits
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB per file
+    files: 50, // Increased to support multiple document types
+    fieldSize: 10 * 1024 * 1024,
+  },
+});
+
+// Enhanced error handling middleware
+export const handleMulterError = (error: any, req: any, res: any, next: any) => {
+  if (error instanceof multer.MulterError) {
+    switch (error.code) {
+      case "LIMIT_FILE_SIZE":
+        return res.status(400).json({
+          success: false,
+          message: "File too large. Maximum size is 10MB per file.",
+          error: error.message,
+          details: `File '${error.field}' exceeded size limit`
+        });
+      case "LIMIT_FILE_COUNT":
+        return res.status(400).json({
+          success: false,
+          message: "Too many files. Maximum 50 files allowed.",
+          error: error.message,
+          details: `Limit exceeded for field '${error.field}'`
+        });
+      case "LIMIT_UNEXPECTED_FILE":
+        return res.status(400).json({
+          success: false,
+          message: "Unexpected file field.",
+          error: error.message,
+          details: `Field '${error.field}' was not expected`
+        });
+      case "LIMIT_FIELD_KEY":
+        return res.status(400).json({
+          success: false,
+          message: "Field name too long.",
+          error: error.message,
+          details: `Field name exceeds maximum length`
+        });
+      case "LIMIT_FIELD_VALUE":
+        return res.status(400).json({
+          success: false,
+          message: "Field value too large.",
+          error: error.message,
+          details: `Field '${error.field}' value exceeds size limit`
+        });
+      case "LIMIT_FIELD_COUNT":
+        return res.status(400).json({
+          success: false,
+          message: "Too many fields.",
+          error: error.message,
+          details: "Maximum number of fields exceeded"
+        });
+      case "LIMIT_PART_COUNT":
+        return res.status(400).json({
+          success: false,
+          message: "Too many parts.",
+          error: error.message,
+          details: "Maximum number of form parts exceeded"
+        });
+      default:
+        return res.status(400).json({
+          success: false,
+          message: "File upload error.",
+          error: error.message,
+          details: `Multer error code: ${error.code}`
+        });
+    }
+  }
+
+  if (error.message.includes("Invalid file type")) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+      error: "Invalid file type",
+      details: `Allowed types: ${Object.keys(allowedExtensions).join(", ")}`,
+      allowedExtensions: allowedExtensions
+    });
+  }
+
+  next(error);
+};
+
+// ✅ ENHANCED: Upload fields configuration for loan applications
+export const uploadFields = upload.fields([
+  // Standard document uploads
+  { name: "documents", maxCount: 10 },
+  { name: "document", maxCount: 10 },
+  { name: "images", maxCount: 5 },
+  { name: "attachments", maxCount: 10 },
+  { name: "videos", maxCount: 3 },
+  { name: "audio", maxCount: 5 },
+  { name: "fonts", maxCount: 5 },
+  { name: "archives", maxCount: 5 },
+  { name: "code", maxCount: 10 },
+  
+  // Profile uploads
+  { name: "profilePicture", maxCount: 1 },
+  { name: "employeeSignature", maxCount: 1 },
+  { name: "organizationLogoUrl", maxCount: 1 },
+  { name: "organizationLogo", maxCount: 1 },
+  
+  // HR/Employee documents
+  { name: "idProof", maxCount: 1 },
+  { name: "idProofDocument", maxCount: 1 },
+  { name: "cvDocument", maxCount: 1 },
+  { name: "appointmentLetter", maxCount: 1 },
+  { name: "qualificationCertificates", maxCount: 10 },
+  { name: "additionalDocuments", maxCount: 10 },
+  
+  // Organization documents
+  { name: "tradingLicense", maxCount: 1 },
+  { name: "paymentProof", maxCount: 1 },
+  { name: "agreementDocument", maxCount: 1 },
+  
+  // ========================================
+  // ✅ ENHANCED: Collateral Documents (up to 5 each)
+  // ========================================
+  { name: "proofOfOwnership", maxCount: 5 },
+  { name: "ownerIdentification", maxCount: 5 },
+  { name: "legalDocument", maxCount: 5 },
+  { name: "physicalEvidence", maxCount: 5 },
+  { name: "valuationReport", maxCount: 5 },
+  
+  // ========================================
+  // ✅ NEW: Guarantor Documents
+  // ========================================
+  { name: "guarantorIdentification", maxCount: 5 },
+  { name: "guarantorCrbReport", maxCount: 1 },
+  
+  // ========================================
+  // ✅ NEW: Borrower/Institution Documents
+  // ========================================
+  // Marriage-related documents
+  { name: "marriageCertificate", maxCount: 1 },
+  { name: "spouseCrbReport", maxCount: 1 },
+  { name: "spouseIdentification", maxCount: 1 },
+  
+  // Witness documents
+  { name: "witnessCrbReport", maxCount: 1 },
+  { name: "witnessIdentification", maxCount: 1 },
+  
+  // Institution documents (RDB, RGB, RCA)
+  { name: "institutionLegalDocument", maxCount: 1 }, // RDB for company
+  { name: "cooperativeLegalDocument", maxCount: 1 }, // RGB for cooperative
+  { name: "otherInstitutionLegalDocument", maxCount: 1 }, // RCA for other
+  { name: "institutionLicense", maxCount: 1 },
+  { name: "institutionTradingLicense", maxCount: 1 },
+  { name: "institutionRegistration", maxCount: 1 },
+  
+  // ========================================
+  // ✅ NEW: Additional Collateral Documents (Dynamic)
+  // ========================================
+  { name: "additionalCollateralDocs", maxCount: 10 },
+
+   { name: "shareholderIdentification", maxCount: 10 },
+  { name: "boardMemberIdentification", maxCount: 10 },
+  { name: "proofOfShares", maxCount: 10 },
+  { name: "boardResolution", maxCount: 5 },
+  { name: "shareholderCrbReport", maxCount: 10 },
+  { name: "boardMemberCrbReport", maxCount: 10 },
+]);
+
+// Specific configurations for different use cases
+export const uploadSingle = upload.single("document");
+export const uploadSingledocument = upload.single("attached_documents");
+export const uploadMultiple = upload.array("documents", 10);
+
+export const uploadShareholderDocument = upload.fields([
+  { name: "document", maxCount: 1 }, 
+  { name: "idProof", maxCount: 1 },
+  { name: "tradingLicense", maxCount: 1 },
+  { name: "paymentProof", maxCount: 1 },
+  { name: "agreementDocument", maxCount: 1 },
+  { name: "organizationLogo", maxCount: 1 },
+]);
+
+// Additional utility exports
+export const getAllowedExtensions = () => ({ ...allowedExtensions });
+export const isExtensionAllowed = (ext: string) => allAllowedExtensions.includes(ext.toLowerCase());
+
+export default upload;
+
