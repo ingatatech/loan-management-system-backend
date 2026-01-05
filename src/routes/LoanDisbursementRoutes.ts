@@ -107,4 +107,10 @@ router.post(
   UpdatedLoanDisbursementController.createThreeStepDisbursement
 );
 
+router.get(
+  "/with-accounts",
+
+  UpdatedLoanDisbursementController.getDisbursedLoansWithAccounts
+);
+
 export default router;

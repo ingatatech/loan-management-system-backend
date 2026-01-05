@@ -28,6 +28,53 @@ class BorrowerController {
       dbConnection.getRepository(Organization)
     );
   }
+  getBorrowerProfiles = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const organizationId = parseInt(req.params.organizationId);
+      if (!organizationId || isNaN(organizationId)) {
+        res.status(400).json({
+          success: false,
+          message: "Invalid organization ID",
+        });
+        return;
+      }
+
+      // Parse query parameters (maintains original pattern)
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const search = req.query.search as string;
+      const isActive = req.query.isActive === "true" 
+        ? true 
+        : req.query.isActive === "false" 
+        ? false 
+        : undefined;
+
+      const result = await this.borrowerService.getBorrowerProfiles(
+        organizationId,
+        page,
+        limit,
+        search,
+        isActive
+      );
+
+      if (result.success) {
+        res.status(200).json(result);
+      } else {
+        res.status(500).json(result);
+      }
+    } catch (error: any) {
+      console.error("Get borrower profiles controller error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error while fetching borrower profiles",
+        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
 
   /**
    * Create Borrower Profile
@@ -199,53 +246,6 @@ class BorrowerController {
     }
   };
   
-  getBorrowerProfiles = async (
-    req: AuthenticatedRequest,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> => {
-    try {
-      const organizationId = parseInt(req.params.organizationId);
-      if (!organizationId || isNaN(organizationId)) {
-        res.status(400).json({
-          success: false,
-          message: "Invalid organization ID",
-        });
-        return;
-      }
-
-      // Parse query parameters (maintains original pattern)
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 10;
-      const search = req.query.search as string;
-      const isActive = req.query.isActive === "true" 
-        ? true 
-        : req.query.isActive === "false" 
-        ? false 
-        : undefined;
-
-      const result = await this.borrowerService.getBorrowerProfiles(
-        organizationId,
-        page,
-        limit,
-        search,
-        isActive
-      );
-
-      if (result.success) {
-        res.status(200).json(result);
-      } else {
-        res.status(500).json(result);
-      }
-    } catch (error: any) {
-      console.error("Get borrower profiles controller error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Internal server error while fetching borrower profiles",
-        error: process.env.NODE_ENV === "development" ? error.message : undefined,
-      });
-    }
-  };
 
   /**
    * Get Borrower by ID

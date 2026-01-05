@@ -12,7 +12,6 @@ async function startServer() {
     // Initialize database connection
     if (!dbConnection.isInitialized) {
       await dbConnection.initialize();
-      console.log("✅ Database connection established successfully");
     }
 
     // Start the server
@@ -22,7 +21,6 @@ async function startServer() {
       console.log(`🏥 Health check available at http://localhost:${PORT}/api/health`);
     });
   } catch (error) {
-    console.error("❌ Failed to start server:", error);
     process.exit(1);
   }
 }
@@ -30,22 +28,18 @@ async function startServer() {
 startClassificationCronJob();
 // Handle graceful shutdown
 process.on("SIGTERM", async () => {
-  console.log("🛑 SIGTERM received, shutting down gracefully")
 
   if (dbConnection.isInitialized) {
     await dbConnection.destroy()
-    console.log("✅ Database connection closed")
   }
 
   process.exit(0)
 })
 
 process.on("SIGINT", async () => {
-  console.log("🛑 SIGINT received, shutting down gracefully")
 
   if (dbConnection.isInitialized) {
     await dbConnection.destroy()
-    console.log("✅ Database connection closed")
   }
 
   process.exit(0)

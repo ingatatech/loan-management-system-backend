@@ -66,7 +66,6 @@ getCategoriesByType = async (
       res.status(400).json(result);
     }
   } catch (error: any) {
-    console.error("Get categories controller error:", error);
     res.status(500).json({
       success: false,
       message: "Internal server error",
@@ -81,14 +80,9 @@ createAccount = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    console.log("=== CREATE ACCOUNT CONTROLLER DEBUG START ===");
-    console.log("Request body:", req.body);
-    console.log("Request params:", req.params);
-    console.log("User:", req.user);
-
+ 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.log("Validation errors:", errors.array());
       res.status(400).json({
         success: false,
         message: "Validation failed",
@@ -100,7 +94,6 @@ createAccount = async (
     const organizationId = parseInt(req.params.organizationId);
     
     if (!organizationId || isNaN(organizationId)) {
-      console.log("Invalid organization ID");
       res.status(400).json({
         success: false,
         message: "Invalid organization ID",
@@ -122,11 +115,9 @@ createAccount = async (
       if (!isNaN(parsedParentId) && parsedParentId > 0) {
         parentAccountId = parsedParentId;
       } else {
-        console.log("Invalid parentAccountId provided, setting to null:", req.body.parentAccountId);
         parentAccountId = null;
       }
     } else {
-      console.log("No parentAccountId provided, using null");
     }
 
     const accountData = {
@@ -136,7 +127,6 @@ createAccount = async (
       parentAccountId: parentAccountId, // Will be null if not provided or invalid
     };
 
-    console.log("Processed account data:", accountData);
 
     const result = await this.accountService.createAccount(
       accountData,
@@ -144,19 +134,13 @@ createAccount = async (
       req.user?.id || 0
     );
 
-    console.log("Service result:", result);
-    console.log("=== CREATE ACCOUNT CONTROLLER DEBUG END ===");
-
     if (result.success) {
       res.status(201).json(result);
     } else {
       res.status(400).json(result);
     }
   } catch (error: any) {
-    console.error("=== CREATE ACCOUNT CONTROLLER ERROR ===");
-    console.error("Error:", error);
-    console.error("Error message:", error.message);
-    console.error("Error stack:", error.stack);
+
     res.status(500).json({
       success: false,
       message: "Internal server error",
@@ -201,7 +185,6 @@ createAccount = async (
         res.status(400).json(result);
       }
     } catch (error: any) {
-      console.error("Get accounts controller error:", error);
       res.status(500).json({
         success: false,
         message: "Internal server error",
@@ -246,7 +229,6 @@ createAccount = async (
         res.status(404).json(result);
       }
     } catch (error: any) {
-      console.error("Get account controller error:", error);
       res.status(500).json({
         success: false,
         message: "Internal server error",
@@ -308,7 +290,6 @@ createAccount = async (
         res.status(400).json(result);
       }
     } catch (error: any) {
-      console.error("Update account controller error:", error);
       res.status(500).json({
         success: false,
         message: "Internal server error",
@@ -353,7 +334,6 @@ createAccount = async (
         res.status(400).json(result);
       }
     } catch (error: any) {
-      console.error("Delete account controller error:", error);
       res.status(500).json({
         success: false,
         message: "Internal server error",
@@ -386,7 +366,6 @@ createAccount = async (
         res.status(404).json(result);
       }
     } catch (error: any) {
-      console.error("Get account balance controller error:", error);
       res.status(500).json({
         success: false,
         message: "Internal server error",
@@ -431,7 +410,6 @@ createAccount = async (
         res.status(400).json(result);
       }
     } catch (error: any) {
-      console.error("Get accounts by type controller error:", error);
       res.status(500).json({
         success: false,
         message: "Internal server error",

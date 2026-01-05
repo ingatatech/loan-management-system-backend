@@ -7,10 +7,12 @@ import {
   ManyToOne,
   JoinColumn,
   Index,
+  OneToMany,
 } from "typeorm";
-import { Loan, BorrowerType } from "./Loan";
+import { Loan } from "./Loan";
 import { BorrowerProfile } from "./BorrowerProfile";
 import { Organization } from "./Organization";
+import { BorrowerType } from "./BorrowerType";
 
 @Entity("client_borrower_accounts")
 @Index(["loanId", "organizationId"], { unique: true })
@@ -25,12 +27,19 @@ export class ClientBorrowerAccount {
   @Column({ type: "int" })
   loanId: number;
 
+@OneToMany(() => Loan, (loan) => loan.clientAccount, { 
+    cascade: ['insert', 'update']  
+})
+loans: Loan[];
+
   @Column({ type: "int", nullable: true })
   borrowerId: number | null;
 
+  // ✅ FIXED: Proper enum configuration with separate import
   @Column({
     type: "enum",
-    enum: BorrowerType
+    enum: BorrowerType,
+    default: BorrowerType.INDIVIDUAL
   })
   borrowerType: BorrowerType;
 

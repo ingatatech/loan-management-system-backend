@@ -40,6 +40,7 @@ class OrganizationController {
         businessSector: req.body.businessSector,
         phone: req.body.phone,
         email: req.body.email,
+        branches: req.body.branches, 
         adminUser: {
           username: req.body.adminUser?.username || req.body.adminUsername,
           email: req.body.adminUser?.email || req.body.adminEmail,

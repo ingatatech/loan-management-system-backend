@@ -43,6 +43,14 @@ export interface ApprovalConditions {
   gracePeriodMonths?: number;
   specialConditions?: string[];
   additionalTerms?: string;
+    repaymentModality?: string;  
+  singlePaymentMonths?: number;         
+  customSchedule?: Array<{          
+    installmentNumber: number;
+    dueDate: string;
+    amount: number;
+    notes?: string;
+  }>;
 }
 
 export interface RejectionReasons {
@@ -285,5 +293,72 @@ export class LoanAnalysisReport {
     if (this.isManagingDirectorSigned) completed++;
 
     return (completed / total) * 100;
+  }
+
+    getRepaymentStructure(): {
+    modality: string;
+    description: string;
+    details?: string;
+  } | null {
+    if (!this.approvalConditions) return null;
+
+    const modality = this.approvalConditions.repaymentModality || 'multiple_with_interest';
+    
+    const descriptions: Record<string, string> = {
+      single: 'One lump sum payment',
+      multiple_with_interest: 'Standard amortization',
+      multiple_only_interest: 'Interest-only with balloon payment',
+      customized: 'Custom payment schedule'
+    };
+
+    let details: string | undefined;
+
+    if (modality === 'single' && this.approvalConditions.singlePaymentMonths) {
+      details = `Payment due after ${this.approvalConditions.singlePaymentMonths} months`;
+    } else if (modality === 'customized' && this.approvalConditions.customSchedule) {
+      details = `${this.approvalConditions.customSchedule.length} custom installments`;
+    }
+
+    return {
+      modality,
+      description: descriptions[modality] || descriptions.multiple_with_interest,
+      details
+    };
+  }
+    validateCustomSchedule(): { valid: boolean; errors: string[] } {
+    const errors: string[] = [];
+
+    if (!this.approvalConditions?.repaymentModality) {
+      return { valid: true, errors: [] };
+    }
+
+    if (this.approvalConditions.repaymentModality !== 'customized') {
+      return { valid: true, errors: [] };
+    }
+
+    if (!this.approvalConditions.customSchedule || this.approvalConditions.customSchedule.length === 0) {
+      errors.push("Custom schedule is required for customized repayment modality");
+      return { valid: false, errors };
+    }
+
+    // Validate dates are in order
+    const dates = this.approvalConditions.customSchedule.map(item => new Date(item.dueDate));
+    for (let i = 1; i < dates.length; i++) {
+      if (dates[i] <= dates[i - 1]) {
+        errors.push("Payment dates must be in chronological order");
+        break;
+      }
+    }
+
+    // Validate amounts are positive
+    const hasNegativeAmount = this.approvalConditions.customSchedule.some(item => item.amount <= 0);
+    if (hasNegativeAmount) {
+      errors.push("All payment amounts must be positive");
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors
+    };
   }
 }

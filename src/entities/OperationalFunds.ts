@@ -6,6 +6,8 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  BeforeUpdate,
+  BeforeInsert
 } from "typeorm";
 import { Organization } from "./Organization";
 
@@ -28,6 +30,11 @@ export enum FundStatus {
   FULLY_UTILIZED = "fully_utilized",
   FROZEN = "frozen",
   EXPIRED = "expired",
+}
+
+export enum OperationalHistoryType {
+  INJECTION = "injection",
+  WITHDRAWAL = "withdrawal"
 }
 
 interface UtilizationPlan {
@@ -56,6 +63,27 @@ interface BudgetAllocation {
   utilizationPercentage: number;
 }
 
+// NEW: Operational History Interface
+interface OperationalHistory {
+  id?: number;
+  date: Date;
+  type: OperationalHistoryType;
+  amountInjected?: number;
+  amountWithdrawn?: number;
+  description: string;
+  transactionReference?: string;
+  performedBy?: number;
+  performedByName?: string;
+  previousAmountCommitted: number;
+  newAmountCommitted: number;
+  previousAmountUtilized: number;
+  newAmountUtilized: number;
+  previousStatus: FundStatus;
+  newStatus: FundStatus;
+  notes?: string;
+  createdAt?: Date;
+}
+
 @Entity("operational_funds")
 export class OperationalFunds {
   @PrimaryGeneratedColumn()
@@ -70,7 +98,15 @@ export class OperationalFunds {
   @Column({ type: "varchar", length: 255, nullable: true })
   fundSourceDescription: string | null;
 
-  @Column({ type: "decimal", precision: 15, scale: 2 })
+  @Column({ 
+    type: "decimal", 
+    precision: 15, 
+    scale: 2,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => parseFloat(value)
+    }
+  })
   amountCommitted: number;
 
   @Column({ type: "date" })
@@ -95,10 +131,28 @@ export class OperationalFunds {
   })
   status: FundStatus;
 
-  @Column({ type: "decimal", precision: 15, scale: 2, default: 0 })
+  @Column({ 
+    type: "decimal", 
+    precision: 15, 
+    scale: 2, 
+    default: 0,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => parseFloat(value)
+    }
+  })
   amountUtilized: number;
 
-  @Column({ type: "decimal", precision: 15, scale: 2, default: 0 })
+  @Column({ 
+    type: "decimal", 
+    precision: 15, 
+    scale: 2, 
+    default: 0,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => parseFloat(value)
+    }
+  })
   amountReserved: number;
 
   @Column({ type: "text", nullable: true })
@@ -128,8 +182,21 @@ export class OperationalFunds {
   @Column({ type: "boolean", default: false })
   requiresApproval: boolean;
 
-  @Column({ type: "decimal", precision: 15, scale: 2, nullable: true })
+  @Column({ 
+    type: "decimal", 
+    precision: 15, 
+    scale: 2, 
+    nullable: true,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => value ? parseFloat(value) : null
+    }
+  })
   monthlyBurnRate: number | null;
+
+  // NEW: Operational History Array
+  @Column({ type: "jsonb", default: [] })
+  operationalHistory: OperationalHistory[];
 
   @ManyToOne(() => Organization, (organization) => organization.operationalFunds, {
     nullable: false,
@@ -153,61 +220,154 @@ export class OperationalFunds {
   @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 
-  // Business methods
+  @BeforeInsert()
+  @BeforeUpdate()
+  normalizeDecimalFields() {
+    // Ensure all decimal fields are properly converted to numbers
+    this.amountCommitted = this.toDecimal(this.amountCommitted);
+    this.amountUtilized = this.toDecimal(this.amountUtilized);
+    this.amountReserved = this.toDecimal(this.amountReserved);
+    if (this.monthlyBurnRate !== null && this.monthlyBurnRate !== undefined) {
+      this.monthlyBurnRate = this.toDecimal(this.monthlyBurnRate);
+    }
+  }
+
+  private toDecimal(value: any): number {
+    if (value === null || value === undefined) return 0;
+    
+    // Convert to number
+    const num = typeof value === 'string' ? parseFloat(value) : Number(value);
+    
+    // Round to 2 decimal places to avoid floating point issues
+    return parseFloat(num.toFixed(2));
+  }
+
+  // NEW: Add injection method with proper decimal handling
+  addInjection(
+    amount: number,
+    description: string,
+    performedBy?: number,
+    performedByName?: string,
+    transactionReference?: string,
+    notes?: string
+  ): OperationalHistory {
+    const injectedAmount = this.toDecimal(amount);
+    
+    if (injectedAmount <= 0) {
+      throw new Error("Injection amount must be positive");
+    }
+
+    const previousAmountCommitted = this.toDecimal(this.amountCommitted);
+    const previousAmountUtilized = this.toDecimal(this.amountUtilized);
+    const previousStatus = this.status;
+
+    // Calculate new committed amount with proper arithmetic
+    const newAmountCommitted = previousAmountCommitted + injectedAmount;
+
+    // Update the committed amount
+    this.amountCommitted = newAmountCommitted;
+
+    // Update status
+    this.updateStatus();
+
+    const historyEntry: OperationalHistory = {
+      date: new Date(),
+      type: OperationalHistoryType.INJECTION,
+      amountInjected: injectedAmount,
+      description,
+      transactionReference,
+      performedBy,
+      performedByName,
+      previousAmountCommitted,
+      newAmountCommitted,
+      previousAmountUtilized,
+      newAmountUtilized: this.amountUtilized,
+      previousStatus,
+      newStatus: this.status,
+      notes,
+      createdAt: new Date()
+    };
+
+    if (!this.operationalHistory) {
+      this.operationalHistory = [];
+    }
+
+    this.operationalHistory.push(historyEntry);
+    return historyEntry;
+  }
+
+  // NEW: Add withdrawal method with proper decimal handling
+  addWithdrawal(
+    amount: number,
+    description: string,
+    performedBy?: number,
+    performedByName?: string,
+    transactionReference?: string,
+    notes?: string
+  ): OperationalHistory {
+    const withdrawnAmount = this.toDecimal(amount);
+    
+    if (withdrawnAmount <= 0) {
+      throw new Error("Withdrawal amount must be positive");
+    }
+
+    // Check available funds
+    const availableAmount = this.getAvailableAmount();
+    if (withdrawnAmount > availableAmount) {
+      throw new Error(`Insufficient funds. Available: ${availableAmount}, Requested: ${withdrawnAmount}`);
+    }
+
+    const previousAmountCommitted = this.toDecimal(this.amountCommitted);
+    const previousAmountUtilized = this.toDecimal(this.amountUtilized);
+    const previousStatus = this.status;
+
+    // Calculate new committed amount with proper arithmetic
+    const newAmountCommitted = previousAmountCommitted - withdrawnAmount;
+
+    // Update the committed amount
+    this.amountCommitted = newAmountCommitted;
+
+    // Update status
+    this.updateStatus();
+
+    const historyEntry: OperationalHistory = {
+      date: new Date(),
+      type: OperationalHistoryType.WITHDRAWAL,
+      amountWithdrawn: withdrawnAmount,
+      description,
+      transactionReference,
+      performedBy,
+      performedByName,
+      previousAmountCommitted,
+      newAmountCommitted,
+      previousAmountUtilized,
+      newAmountUtilized: this.amountUtilized,
+      previousStatus,
+      newStatus: this.status,
+      notes,
+      createdAt: new Date()
+    };
+
+    if (!this.operationalHistory) {
+      this.operationalHistory = [];
+    }
+
+    this.operationalHistory.push(historyEntry);
+    return historyEntry;
+  }
+
+  // Get available amount with proper decimal handling
   getAvailableAmount(): number {
-    return this.amountCommitted - this.amountUtilized - this.amountReserved;
+    const committed = this.toDecimal(this.amountCommitted);
+    const utilized = this.toDecimal(this.amountUtilized);
+    const reserved = this.toDecimal(this.amountReserved);
+    return Math.max(0, committed - utilized - reserved);
   }
 
   getUtilizationPercentage(): number {
-    return this.amountCommitted > 0 ? (this.amountUtilized / this.amountCommitted) * 100 : 0;
-  }
-
-  getReservationPercentage(): number {
-    return this.amountCommitted > 0 ? (this.amountReserved / this.amountCommitted) * 100 : 0;
-  }
-
-  getDaysUntilExpiration(): number | null {
-    if (!this.expirationDate) return null;
-    const today = new Date();
-    const expiration = new Date(this.expirationDate);
-    const diffTime = expiration.getTime() - today.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  }
-
-  isExpired(): boolean {
-    const daysUntilExpiration = this.getDaysUntilExpiration();
-    return daysUntilExpiration !== null && daysUntilExpiration < 0;
-  }
-
-  isNearExpiration(warningDays: number = 30): boolean {
-    const daysUntilExpiration = this.getDaysUntilExpiration();
-    return daysUntilExpiration !== null && daysUntilExpiration <= warningDays && daysUntilExpiration > 0;
-  }
-
-  canUtilize(amount: number): boolean {
-    return this.getAvailableAmount() >= amount && this.status === FundStatus.AVAILABLE && !this.isExpired();
-  }
-
-  utilizeFund(amount: number, utilizationDate: Date = new Date()): boolean {
-    if (!this.canUtilize(amount)) return false;
-    
-    this.amountUtilized += amount;
-    this.updateStatus();
-    return true;
-  }
-
-  reserveFund(amount: number): boolean {
-    if (this.getAvailableAmount() < amount) return false;
-    
-    this.amountReserved += amount;
-    return true;
-  }
-
-  releaseReservation(amount: number): boolean {
-    if (this.amountReserved < amount) return false;
-    
-    this.amountReserved -= amount;
-    return true;
+    const committed = this.toDecimal(this.amountCommitted);
+    const utilized = this.toDecimal(this.amountUtilized);
+    return committed > 0 ? (utilized / committed) * 100 : 0;
   }
 
   private updateStatus(): void {
@@ -222,52 +382,37 @@ export class OperationalFunds {
     }
   }
 
-  getCompletedUtilizationPlans(): UtilizationPlan[] {
-    return this.utilizationPlan.filter(plan => plan.isCompleted);
+  isExpired(): boolean {
+    if (!this.expirationDate) return false;
+    const today = new Date();
+    const expiration = new Date(this.expirationDate);
+    return today > expiration;
   }
 
-  getPendingUtilizationPlans(): UtilizationPlan[] {
-    return this.utilizationPlan.filter(plan => !plan.isCompleted);
+  // Get total injections from history
+  getTotalInjections(): number {
+    if (!this.operationalHistory || this.operationalHistory.length === 0) return 0;
+    
+    return this.operationalHistory
+      .filter(entry => entry.type === OperationalHistoryType.INJECTION)
+      .reduce((sum, entry) => sum + this.toDecimal(entry.amountInjected || 0), 0);
   }
 
-  getTotalBudgetAllocated(): number {
-    return this.budgetAllocations?.reduce((total, allocation) => total + allocation.allocatedAmount, 0) || 0;
+  // Get total withdrawals from history
+  getTotalWithdrawals(): number {
+    if (!this.operationalHistory || this.operationalHistory.length === 0) return 0;
+    
+    return this.operationalHistory
+      .filter(entry => entry.type === OperationalHistoryType.WITHDRAWAL)
+      .reduce((sum, entry) => sum + this.toDecimal(entry.amountWithdrawn || 0), 0);
   }
 
-  getTotalBudgetSpent(): number {
-    return this.budgetAllocations?.reduce((total, allocation) => total + allocation.actualSpent, 0) || 0;
-  }
-
-  getBudgetUtilizationPercentage(): number {
-    const totalAllocated = this.getTotalBudgetAllocated();
-    const totalSpent = this.getTotalBudgetSpent();
-    return totalAllocated > 0 ? (totalSpent / totalAllocated) * 100 : 0;
-  }
-
-  addBudgetAllocation(allocation: BudgetAllocation): void {
-    if (!this.budgetAllocations) {
-      this.budgetAllocations = [];
-    }
-    this.budgetAllocations.push({
-      ...allocation,
-      remainingBalance: allocation.allocatedAmount - allocation.actualSpent,
-      utilizationPercentage: allocation.allocatedAmount > 0 ? (allocation.actualSpent / allocation.allocatedAmount) * 100 : 0,
-    });
-  }
-
-  getEstimatedRunwayDays(): number | null {
-    if (!this.monthlyBurnRate || this.monthlyBurnRate <= 0) return null;
-    const availableAmount = this.getAvailableAmount();
-    return Math.floor((availableAmount / this.monthlyBurnRate) * 30);
-  }
-
-  updateMonthlyBurnRate(): void {
-    if (this.amountUtilized > 0) {
-      const daysSinceCommitment = Math.floor((Date.now() - this.commitmentDate.getTime()) / (1000 * 60 * 60 * 24));
-      const monthsSinceCommitment = daysSinceCommitment / 30;
-      if (monthsSinceCommitment > 0) {
-        this.monthlyBurnRate = this.amountUtilized / monthsSinceCommitment;
-      }
-    }
+  // Get recent history entries
+  getRecentHistory(limit: number = 10): OperationalHistory[] {
+    if (!this.operationalHistory) return [];
+    
+    return [...this.operationalHistory]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, limit);
   }
 }

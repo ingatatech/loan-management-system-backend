@@ -26,6 +26,11 @@ import { Guarantor } from "./Guarantor";
 import { BouncedCheque } from "./BouncedCheque";
 import { Account } from "./Account";
 import { Transaction } from "./Transaction";
+
+interface Branch {
+  title: string;
+}
+
 interface Address {
   country?: string;
   province?: string;
@@ -185,7 +190,9 @@ accounts: Account[];
 })
 transactions: Transaction[];
 
-  // Business methods
+  @Column({ type: "jsonb", nullable: true })
+  branches: Branch[] | null;
+  
   getTotalShareholders(): number {
     return (this.individualShareholders?.length || 0) + (this.institutionShareholders?.length || 0);
   }

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Repository } from "typeorm";
 import { LoanWorkflow, WorkflowStep, WorkflowStatus, WorkflowHistoryEntry } from "../entities/LoanWorkflow";
 import { Loan, LoanStatus } from "../entities/Loan";

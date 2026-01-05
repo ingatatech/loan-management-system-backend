@@ -38,11 +38,7 @@ router.post(
       .normalizeEmail()
       .withMessage("Please provide a valid admin email address"),
     
-    body("adminUser.phone")
-      .optional()
-      .isMobilePhone("any")
-      .withMessage("Please provide a valid admin phone number"),
-    
+
     handleValidationErrors,
   ],
   OrganizationController.createOrganization
@@ -109,11 +105,6 @@ router.put(
       .isEmail()
       .normalizeEmail()
       .withMessage("Please provide a valid email address"),
-    
-    body("phone")
-      .optional()
-      .isMobilePhone("any")
-      .withMessage("Please provide a valid phone number"),
     
     handleValidationErrors,
   ],

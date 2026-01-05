@@ -1,0 +1,579 @@
+{
+  "faqs": [
+    {
+      "category": "General Taxation",
+      "questions": [
+        {
+          "id": 1,
+          "question": "Who is a casual labourer?",
+          "answer": "A casual labourer is an employee who performs labour that does not require special skills and who is employed for an aggregate period not exceeding thirty (30) days during a twelve (12) months period."
+        },
+        {
+          "id": 2,
+          "question": "What is the difference between personal income (PIT) tax and corporate income tax (CIT)?",
+          "answer": "PIT is income tax for sole traders, partnerships and unincorporated businesses, while CIT is income tax for companies."
+        },
+        {
+          "id": 3,
+          "question": "How can I declare CIT/PIT?",
+          "answer": "• Go to RRA website www.rra.gov.rw\n• choose declare other taxes here\n• Choose pay domestic taxes \n• Enter TIN and password then sign in\n• Click on tax declaration\n• Click on new declaration\n• See pending declaration with specific declaration period\n• Open declaration and proceed with filling\n• Submit your declaration\n• Get acknowledgement receipt with reference number\n• Choose mode of payment (mobile money, or e-payment)\n• Submit your payment."
+        },
+        {
+          "id": 4,
+          "question": "What is the tax period for PIT/CIT?",
+          "answer": "The income tax is calculated for the calendar year, which starts on 1st January and ends on 31st December. The Minister may, upon written request, allow in writing a taxpayer to apply any other twelve (12) months period as a tax period if the taxpayer fulfils the following conditions: \n1° to be an entity subject to corporate income tax; \n2° to keep books of accounts according to generally accepted accounting principles.\n3° to present sound reasons for changing his or her tax period."
+        },
+        {
+          "id": 5,
+          "question": "What is the deadline for income tax declaration?",
+          "answer": "An individual who carries out taxable income generating activities prepares an annual tax declaration in accordance with procedures specified by the tax administration and he or she submits the declaration with annexes comprising the balance sheet, profit, and loss account for that tax period and other annexes thereto drawn according to the requirements of the generally recognized accounting principles and any other relevant document required by the tax administration not later than 31st March of the following tax period, unless otherwise provided by the Law."
+        },
+        {
+          "id": 6,
+          "question": "Who are persons not required to file annual income tax declaration?",
+          "answer": "A person is not required to file his or her annual tax declaration if the person: \n1° has an annual turnover of less than two million Rwandan francs (FRW 2,000,000); \n2° receives only employment income; \n3° receives only income on investment that is subject to withholding tax."
+        },
+        {
+          "id": 7,
+          "question": "How are quarterly prepayments computed and paid?",
+          "answer": "During the current tax period, the taxpayer declares and pays to the account of the Tax Administration before and not later than 30 June, 30 September and 31 December of the year of taxable business activities, a quarterly prepayment tax calculated from tax paid for the previous annual tax period divided by the turnover of the same tax period, times the current quarterly turnover. This amount is reduced by the tax withheld in that quarter, unless the taxable income is not included in the total taxable income."
+        },
+        {
+          "id": 8,
+          "question": "What is the corporate income tax rate?",
+          "answer": "Taxable Business profit is rounded down to the nearest 1000 Rwandan Francs and taxable at a rate of 28%. However, a newly listed company on capital market in Rwanda is taxed for a period of five years starting from the date of listing on the following rates:\n• 20% if that company sells at least 40% of its shares to the public;\n• 25% if that company sells at least 30% of its shares to the public."
+        }
+      ]
+    },
+    {
+      "category": "Electronic Billing Machine (EBM)",
+      "questions": [
+        {
+          "id": 1,
+          "question": "Which category of taxpayers who are eligible for EBM Softwares?",
+          "answer": "EBM is specifically designed for all taxpayers: Large, Medium and Small Taxpayers, both VAT and non-VAT registered taxpayers. It is installed on Computing devices such as Laptop, Desktop, Tablets, PDA, POS as well as smart phone for non-VAT registered taxpayers."
+        },
+        {
+          "id": 2,
+          "question": "Which category of Taxpayers eligible for online EBM Software?",
+          "answer": "Online EBM is eligible for taxpayers who have a limited number of transactions during the fiscal year. These include service suppliers, landlords, consultants, etc."
+        },
+        {
+          "id": 3,
+          "question": "Which are the types of EBM software?",
+          "answer": "Software for Tablet, software for POS, software for android, software for Computer, online software."
+        },
+        {
+          "id": 4,
+          "question": "Which requirements to get EBM software?",
+          "answer": "• To have a tax account \n• Application form signed by the owner or legal representative of companies\n• To fill commitment form signed which you can found through this website: https://ebm2.rra.gov.rw/api/ConfirmForm\n• RDB registration certificate\n• TIN registration certificate\n• Copy of ID or Passport (for foreigners) of the business owner or company representative \n• Have a Computer / laptop or a smart phone android 8.0 and above"
+        },
+        {
+          "id": 5,
+          "question": "How to get EBM software in a smart phone?",
+          "answer": "1st step\n• Go to following website: https://myrra.rra.gov.rw/\n• Choose signup to fill taxpayer information enter your TIN \n• Fill taxpayer information go to verify then you will get taxpayer informations like name telephone email and address province district sector; also you fill Location information\n• Fill user Information : go to individual verify then fill ID then go to verify, create a password then go to send to get a verification code used to finish sign up\n\n2nd step\n• Go to website: https://myrra.rra.gov.rw/\n• Enter your TIN \n• Enter pass word \n• Login \n• Fill taxpayer informations\n• Choice type of EBM \n• Add required attachments \n• Submit \n• Send your request via email: ebm2.installation@rra.gov.rw\n• Call 3004 after choosing language choose 1 to get an EBM approval \n• Guidance for installation by EBM staff"
+        },
+        {
+          "id": 6,
+          "question": "How to request a password for EBM V2?",
+          "answer": "Fill the request form provided by RRA and attach copy of ID or passport (for foreigners); Power of attorney if the applicant is not the owner of business, then send application to this email: ebm2.installation@rra.gov.rw"
+        },
+        {
+          "id": 7,
+          "question": "How to proceed when a computer or a smartphone containing EBM is stolen?",
+          "answer": "Declaration of a theft of when a computer or a smartphone containing EBM to RIB to get a theft written certificate. To apply another EBM software, requirement to get another software to replace the stolen one are application for another EBM Software, identifying serial number of a computer or a telephone which will contain EBM; apply to this website: ebm2.installation@rra.gov.rw"
+        },
+        {
+          "id": 8,
+          "question": "Which Technical assistance for EBM with technical problems?",
+          "answer": "Present the problem to RRA officer to help sort out the problem, or he can call 3004 call center phone then choose 1 to get an EBM staff support who can help via team viewer or any desk applications. Issues which can be fixed include: \n• Items not send which occur many times when a computer or telephone containing EBM pass a time without internet connect;\n• Forget a password for EBM V2, \n• Changing EBM V2 Software from one Computer to another\n• Computer/ laptop containing EBMV2 software gets permanently Crushed\n• Re-installation of EBM V2 when a computer or a telephone gets damaged or needs to be repaired\n• Request for EBM sales in system\n• Training on EBM V2 usage"
+        },
+        {
+          "id": 9,
+          "question": "How do I get purchase code?",
+          "answer": "• Dial *800# \n• Choose language 1 for Eng or 2 for Kiny\n• Choose 5\n• Enter Buyer's TIN\n• Enter Seller's TIN\n• Finally press 1\nAn SMS with a purchase code will be sent to buyer's telephone number which is registered with RRA."
+        },
+        {
+          "id": 10,
+          "question": "Are taxpayers without TIN also required to issue a purchase code before they are given EBM receipts?",
+          "answer": "No. In the process of issuing EBM receipt, the supplier will only insert customer's telephone number and choose individual instead of cooperate."
+        },
+        {
+          "id": 11,
+          "question": "How do I manage contact information for TIN protection?",
+          "answer": "• Login into E-tax system\n• Click on Update Details \n• Select Taxpayer contact management\n• Fill all mandatory fields in My Contact Management form \n• Click Save \nYou can add as many contacts as you wish after saving."
+        },
+        {
+          "id": 12,
+          "question": "If I press *800# do I have to incur some charges?",
+          "answer": "Yes, Frw 15 for each purchase code requested if you use MTN line. There is no fee if you choose to use Airtel / Tigo line."
+        },
+        {
+          "id": 13,
+          "question": "How long does the purchase code last?",
+          "answer": "• Purchase code expires after being used\n• Purchase code expires when the buyer changes from one seller to another."
+        },
+        {
+          "id": 14,
+          "question": "Does someone who is issuing an EBM invoice to a non-business entity requires purchase code?",
+          "answer": "Yes, as long as the invoice is issued using a TIN of that non-business entity."
+        },
+        {
+          "id": 15,
+          "question": "What was the reason of introducing the use of purchase code?",
+          "answer": "Purchase code is the security feature added in the EBM to prevent misusage of Buyer TIN and this was introduced basing on complaints from taxpayers. No registered taxpayer will be able to purchase with selling purpose without a purchase code provided by RRA systems."
+        },
+        {
+          "id": 16,
+          "question": "Why can purchase code sometimes fail to be used (invalid purchase code)?",
+          "answer": "Invalid purchase code can occur if your purchase code fails to be used, the mistakes can occur to both side seller and buyer in using TIN or copying the code, old version of EBM not updated. Here are some tips to help you troubleshoot: Check for blank spaces when copying and pasting the code, verify if you're potentially using the same purchase code as before, etc."
+        },
+        {
+          "id": 17,
+          "question": "How can someone solve the issue of quantities not sent (waiting quantity)?",
+          "answer": "Waiting quantity issue occur when a machine containing EBM is not connected to internet, you have an old version of EBM, capacity of device containing EBM not enough or server is down. The solution is to reconnect it to internet and wait for synchronization, resend those items not sent, update EBM or replace the machine."
+        },
+        {
+          "id": 18,
+          "question": "Why does the EBM update occur?",
+          "answer": "Updates of EBM software are necessary to strengthen it and to be friendly use. Update consists of replacing the old EBM software by the current one."
+        },
+        {
+          "id": 19,
+          "question": "What to do in case of invoice(s) not reported?",
+          "answer": "Non reported invoice may occur during VAT/PIT/CIT filing as a result of server down, wrong tax type and special character on items when generating invoice. The solution is to resend or synchronize."
+        }
+      ]
+    },
+    {
+      "category": "E-Tax",
+      "questions": [
+        {
+          "id": 1,
+          "question": "How to request Tax Clearance Certificate",
+          "answer": "• Go to www.rra.gov.rw\n• Choose declare domestic taxes\n• Login using TIN and password\n• Choose TCC, Quitus and other application\n• Click apply here after checking status of tax arrears and clearing them if any\n• Under certificate type, choose TCC\n• Fill in the reason for application then submit"
+        },
+        {
+          "id": 2,
+          "question": "How do I enable macro in the excel sheet before I start filling taxes?",
+          "answer": "• Click on 'Enable editing'  \n• Choose 'Enable Content'\n• Validate and Save after filling the annexure"
+        },
+        {
+          "id": 3,
+          "question": "How do I unlock Data validation in excel sheet after entering the data in annexure?",
+          "answer": "• Go to down loads and right click on the annexure \n• Click on properties \n• Click on unblock\n• APPLY \n• OK \n• Open the annexure from the downloads"
+        },
+        {
+          "id": 4,
+          "question": "How can someone change the date format in case of invalid date format message?",
+          "answer": "• Go to Control penal \n• Click on Clock and Region\n• Choose Region\n• Under format Select English United Kingdom\n• Apply \n• OK"
+        }
+      ]
+    },
+    {
+      "category": "Local Government Taxes",
+      "questions": [
+        {
+          "id": 1,
+          "question": "Who is liable for the trading licence tax?",
+          "answer": "The trading licence tax is paid by any person that opens a business activity within a district."
+        },
+        {
+          "id": 2,
+          "question": "What are the entities exempted from trading license tax?",
+          "answer": "Non-commercial public institutions as well as micro-enterprises and small businesses during the first two years following their establishment."
+        },
+        {
+          "id": 3,
+          "question": "What is the meaning of 'small business' and 'micro-enterprise'?",
+          "answer": "'Small business' means a business activity which results into a turnover ranging between FRW 12,000,001 and FRW 20,000,000 per each tax period while 'micro-enterprise' means a business activity which results into a turnover equal to or of less than FRW 12,000,000 per each tax period."
+        },
+        {
+          "id": 4,
+          "question": "How can someone declare Trading license using internet?",
+          "answer": "• Open RRA website: www.rra.gov.rw \n• Go to 'Declare District Revenues' \n• Click on Taxes (Imisoro) \n• Connect using TIN and password) \n• Click on 'Declaration' then 'Taxes'\n• Under Tax type, choose 'Trading license' then select the year\n• Under Declaration options, choose 'annual declarations' or 'quarters' then Submit \n• Choose the trading unit and the period being declared\n• Click Document Number\n• Follow the prompts until you click on 'Calculate Tax' then 'Submit'"
+        },
+        {
+          "id": 5,
+          "question": "What is the tax period for the trading license tax?",
+          "answer": "The tax period for the trading license tax starts on January 1st and ends on December 31st. However, if taxable trading activities start after January, the taxpayer pays trading license tax equivalent to the remaining months of the year including the one in which the activities started."
+        },
+        {
+          "id": 6,
+          "question": "What is the date for trading license tax declaration and payment?",
+          "answer": "Any taxpayer files a tax declaration to the tax administration not later than 31st January of the year that corresponds to the tax period."
+        },
+        {
+          "id": 7,
+          "question": "What is the trading license tax rate?",
+          "answer": "The trading license tax is calculated basing on the turnover or the nature of activities.\n\nTurnover:\n- 50,000,000,000 and above: 2,000,000 annual tax due\n- From 25,000,000,000 to 50,000,000,000: 1,500,000 annual tax due\n- From 1,000,000,000 to 25,000,000,000: 1,000,000 annual tax due\n- From 200,000,000 to 1,000,000,000: 500,000 annual tax due\n- From 20,000,000 to 200,000,000: 280,000 annual tax due\n- From 12,000,000 to 20,000,000: 160,000 annual tax due\n- From 7,000,000 to 12,000,000: 120,000 annual tax due\n- From 2,000,000 to 7,000,000: 100,000 annual tax due\n\nOthers profit-oriented activities:\n- Profit-oriented activities not registered on income tax, on urban zone: 60,000 annual tax due\n- Profit-oriented activities not registered on income tax, on rural zone: 30,000 annual tax due\n- Individual transport activities by vehicle: 40,000 annual tax due\n- Transport activities by boat: 20,000 annual tax due\n- Transport activities by motor cycle: 8,000 annual tax due\n\nThe turnover given as the basis for calculating the trading license is that of the previous year. However, the taxpayer who opens a business activity declares and pays the trading license tax basing on the starting capital."
+        },
+        {
+          "id": 8,
+          "question": "How is trading license tax declared for the head office and operating branches?",
+          "answer": "If a taxpayer has a head office and branches in districts, a trading license tax declaration is required for the head office as well as for each branch of his or her business activities basing on the turnover of the previous year for the head office and for each branch. In case a branch does not have or cannot determine its turnover, the trading license tax is declared based on the turnover of the head office. If all the branches are located in the same district as the head office, the taxpayer pays the trading license tax according to the turnover of the head office. If the branches are located in a district other than that of the head office, the trading license tax is unique and calculated basing on the turnover of the branch with the highest turnover."
+        },
+        {
+          "id": 9,
+          "question": "How is trading license tax declared for business in more than one district?",
+          "answer": "In case a business activity is spread across more than one district, the taxpayer files his/her declaration of trade licence tax in each district where he/she operates."
+        },
+        {
+          "id": 10,
+          "question": "How to pay cleaning fees using M-declaration?",
+          "answer": "• Dial *182#\n• Select 3 Kwishyura\n• Select 6 Rwanda Revenue\n• Put in RRA Reference number\n• Enter Momo PIN"
+        },
+        {
+          "id": 11,
+          "question": "What are Interests and penalties for late payment of LGT taxes and fees?",
+          "answer": "The tax not paid on time bears an interest of one point five percent (1.5%). The interest is calculated on a monthly basis, non-compounding, counting from the first day after the date the tax should have been paid until the day of payment, which is included. Every month started will count as a complete month. Except the interest payable, a surcharge equivalent to ten percent (10%) of the tax due must be paid. However, such a surcharge cannot exceed an amount of one hundred thousand Rwandan francs (FRW100, 000). Any taxpayer who fails to file a tax declaration on time and the one who files a false declaration are liable to a penalty of forty percent (40%) of the tax due."
+        },
+        {
+          "id": 12,
+          "question": "How is rental income tax rate determined?",
+          "answer": "The rental income tax rate is determined as follows: \n1. zero percent (0 %) for an annual rental income from one Rwandan franc (FRW 1) to one hundred eighty thousand Rwandan francs (FRW 180,000); \n2. twenty percent (20 %) for an annual rental income from one hundred eighty thousand and one Rwandan francs (FRW 180,001) to one million Rwandan francs (FRW 1,000,000);\n3. thirty percent (30 %) for an annual rental income above one million Rwandan francs (FRW 1,000,000)."
+        },
+        {
+          "id": 13,
+          "question": "How is rental income tax computed?",
+          "answer": "The taxable rental income is obtained by deducting from the gross rental income fifty percent (50%) considered as the expenses incurred by the taxpayer on maintenance and upkeep of the rented property. When the taxpayer produces the proof of bank interest payments on a loan for the construction or purchase of a rented property, the taxable rental income is determined by deducting from gross rental income fifty percent (50%) considered as the expenses incurred for upkeep of the property plus actual bank interest paid from the beginning of the rental period within the tax period."
+        },
+        {
+          "id": 14,
+          "question": "What is the payment period for district fees?",
+          "answer": "Fees levied on a service are paid before the service is delivered. Fees payable on a monthly basis are paid to the tax administration not later than the fifth (5) of the month following the taxable month. Fees payable once a year are paid not later than 31st December of the taxable year."
+        },
+        {
+          "id": 15,
+          "question": "How can someone declare rental income tax?",
+          "answer": "• Open RRA website: www.rra.gov.rw \n• Click on Online Services \n• Click on District Revenues \n• Click on Taxes (Imisoro) \n• Connect yourself (user name: TIN and password) \n• Select Tax type as Rental Income Tax\n• Select year \n• Then Submit \n• Click on Assessment number / Document Number \n• Enter the monthly & annual Rental Income \n• The client is asked if he/she has a bank loan or not, if not click No, if yes click Yes and fill the necessary information, \n• Click on Calculate Tax \n• Click on Submit"
+        },
+        {
+          "id": 16,
+          "question": "Who is required to pay tax on rental income tax?",
+          "answer": "Everyone who owns a rented property pays income Tax."
+        },
+        {
+          "id": 17,
+          "question": "When do they pay tax on rental income?",
+          "answer": "The rental income tax is payable by the 31st on the first month of each year."
+        },
+        {
+          "id": 18,
+          "question": "Who are taxpayers subject to immovable property tax?",
+          "answer": "The immovable property tax is assessed and paid by the owner, the usufructuary or any other person considered to be the owner."
+        },
+        {
+          "id": 19,
+          "question": "What is the immovable property exempted from immovable property tax?",
+          "answer": "• (a) one building intended by the owner to be occupied as his or her dwelling and its annex buildings located in a residential plot for one family. That building remains considered as his or her dwelling even when he/she does not occupy it for various reasons; \n• (b) immovable property determined by the district Council or the Council of the City of Kigali as owned by vulnerable persons; \n• (c) immovable property owned by the State, decentralised entities and public institutions, except if they are used for profit-making activities or for leasing; \n• (d) immovable property belonging to foreign diplomatic missions in Rwanda if their countries do not levy tax on immovable property of Rwanda's diplomatic missions; \n• (e) land used for agricultural, livestock or forestry activities whose area is equal to or less than two hectares; \n• (f) land reserved for construction of residential houses but where no basic infrastructure has been erected;\n• (g) plot of land on which a condominium is built or meant for construction of a condominium."
+        },
+        {
+          "id": 20,
+          "question": "What is the tax rate on immovable property?",
+          "answer": "(1) The tax rate on immovable property is determined as follows: \n• zero to FRW 80 per square meter of the surface of land;\n• 0.5% of the market value of both the building and related plot of land for residential use;\n• 0.3% of the market value of both building and related plot of land for commercial use;\n• 0.1% of the market value of both the building and related plot of land for industrial use, building and plot belonging to micro-enterprises and small business. \n\n(2) However, special consideration is given to the following: \n• A plot and a building for residential use of three floors are taxed at the rate of 0.25% of their market value; \n• A plot and a building for residential use with more than three floors are taxed at the rate of 0.1% of their market value;\n\nAn Order of the Minister in charge of taxes determines the standard rates and other criteria applied by the district Council and the Council of the City of Kigali."
+        },
+        {
+          "id": 21,
+          "question": "What is the tax on sale of immovable property?",
+          "answer": "• A rate of 2% is levied on the sale value of an immovable property for commercial use if the seller is a taxpayer registered for income tax and is a deductible expense; \n• A rate of 2.5% is levied on the sale value of an immovable property sold by a person not registered for income tax;\n• The tax referred to (a) and (b) above is levied on the balance of the sale value of the property after deduction of FRW 5,000,000 which is not subject to tax;"
+        },
+        {
+          "id": 22,
+          "question": "What is the time and cycle for payment of tax on immovable property?",
+          "answer": "The tax on immovable property is paid to the tax administration not later than 31 December of the year that corresponds to the tax period."
+        },
+        {
+          "id": 23,
+          "question": "What are the fees levied on civil marriage services?",
+          "answer": "• The civil marriage celebration service on the date fixed by the Council of the decentralized entity is freely delivered.\n• A person who intends to celebrate civil marriage on a day different from the day fixed by the Council of a decentralized entity pays a fee equivalent to FRW 50,000."
+        },
+        {
+          "id": 24,
+          "question": "What are the fees levied on building permit?",
+          "answer": "The standard rates of fees levied on building permit are fixed as follows: \n• FRW 20,000 for the floor area not exceeding 100 sqm;\n• FRW 100,000 for the floor area ranging from above 100 sqm to 200 sqm;\n• FRW 150,000 for the floor area ranging from above 200 sqm to 500 sqm;\n• FRW 200,000 for the floor area of more than 500 sqm"
+        },
+        {
+          "id": 25,
+          "question": "What are the fees levied on records, certificates and services delivered by decentralized entities?",
+          "answer": "The standard rates of fees levied on records, certificates and services delivered by a decentralised entity are fixed as follows:  \n• A civil status record: FRW 1,500;\n• An extract of a civil status record: FRW1,000;\n• An identity card: FRW 500;\n• A certificate for the loss of an identity card: FRW 3,000;\n• A birth certificate: FRW 500;\n• A marriage certificate: FRW 500\n• A celibacy certificate: FRW 500;\n• A divorce certificate: FRW 500;"
+        },
+        {
+          "id": 26,
+          "question": "What are the fees charged on documents notarized by a public notary?",
+          "answer": "Fees are charged on documents notarized by a public notary as follows: \n• Certification of document authenticity: FRW 1,500;\n• Certification of the conformity of a copy to the original: FRW 1,500;\n• Authentication of signatures: FRW 1,200;\n• Certification of by-laws: FRW 500 for each page;\n• Certification of any contract is FRW 500\n• Issuance of other notarial deeds provided for by law: FRW 500 for each page"
+        },
+        {
+          "id": 27,
+          "question": "What are the charges levied as fees on non-electronic and electronic advertising billboards?",
+          "answer": "The standard rates of charges levied as fees on non-electronic advertising billboards are fixed as follows: \n• In the City of Kigali: FRW 20,000 per sqm per year;\n• In satellite or secondary cities: FRW 15,000 per sqm per year;\n• Elsewhere in the country: 10,000 FRW per sqm per year.\nThe standard rates of charges levied as fees on electronic advertising billboards is FRW100,000 per year, regardless of its size and its location. Other advertising billboards with non- permanent messages require authorization from the competent authority and are subject   to a fee of 5,000 FRW per day. If the advertising billboard advertises on both sides, each side is subject to charge. The above fees may be valued and paid quarterly, at the request of the advertiser."
+        },
+        {
+          "id": 28,
+          "question": "What are the standard rates of charges levied as fees for the use of loudspeaker for advertisement?",
+          "answer": "The standard rates of charges levied as fees on loudspeaker for advertisement are fixed as follows: \n• In the City of Kigali: FRW 100,000 per day;\n• In satellite or secondary cities: FRW 50,000 per day;\n• Elsewhere in the country: FRW10,000 per day.\nThe above advertisement tool requires a prior authorization from the competent authority."
+        },
+        {
+          "id": 29,
+          "question": "What are the Standard rate for charges levied as fees on communication towers?",
+          "answer": "• The standard rate for charges levied as fees on communication towers is FRW 2,000 on every meter of the tower's vertical length per year.\n• If the communication tower is erected on a building or on any other structure that increases its altitude, the height of that building or of that structure is also considered when determining the taxable height of the tower. \nThe height of the building or structure on which the tower is erected is charged FRW 1,000 per meter of the vertical length per year."
+        },
+        {
+          "id": 30,
+          "question": "What are the standard rates for charges levied as fees for Commercial transportation of quarry materials?",
+          "answer": "The standard rates for charges levied as fees, per round of the vehicle transporting quarry materials, bricks or tiles are fixed as follows: \n• FRW 1,000 per m3 of quarry contained in the vehicle\n• FRW 1,000 per m3 per round of the vehicle transporting bricks;\n• FRW 500 per m3 per round of the vehicle transporting tiles"
+        },
+        {
+          "id": 31,
+          "question": "What are the standard rates for charges levied as fees on forest products?",
+          "answer": "The standard rates for charges levied as fees on forest products are fixed as follows:  \n• FRW 150 per plank, payable by the producer of planks;\n• FRW 150 per bag of charcoal paid by the charcoal maker;\n• FRW 1,000 per m3 of firewood, payable by the woodcutter;\n• FRW 1,000 per m3 of beams, payable by the woodcutter."
+        },
+        {
+          "id": 32,
+          "question": "Which are the services and certificates exempted from fees?",
+          "answer": "The following services and certificates are exempt from fees:  \n• The service of transfer of ownership on immovable property;  \n• The certificate of ownership on land issued by the land committee;\n• The certificate of land registration;\n• The authorisation for renovation of a building;\n• The authorisation for rehabilitation of a building;\n• The authorisation for erection of a fence around a building;\n• The building permit in rural village;\n• The certificate of life;\n• The death certificate;\n• The authorisation for producing wood charcoal, clay bricks and tiles burning;\n• The authorisation for forest harvesting;\n• The guardianship certificate"
+        }
+      ]
+    },
+    {
+      "category": "Motor Vehicle",
+      "questions": [
+        {
+          "id": 1,
+          "question": "What are the taxes exempted on a car from returning residents?",
+          "answer": "Only pays number plate and should have been with that car for over one year."
+        },
+        {
+          "id": 2,
+          "question": "What is the process for getting duplicate of lost motor vehicle / motorcycle logbook?",
+          "answer": "• Announcement through Radio\n• Pay Frw 5,000 fees for duplicate Log Book\n• Pay 1,000 for Ownership Certificate from RRA to be presented to RIB,\n• Loss Declaration from RIB Valid for 30 days \n• Declaration form from traffic police (Head quarter)\n• Have no arrears with traffic police \nNote: Request can be done online by the taxpayer."
+        },
+        {
+          "id": 3,
+          "question": "How can I get a Duplicate of Lost Number Plate of motor vehicle/ Motorcycle",
+          "answer": "• Announcement through the radio\n• Pay 1000 for Ownership Certificate from RRA to be presented to RIB, \n• Loss Declaration from RIB Valid for 30 days \n• Motor vehicle /motor cycle physical checking form signed and stamped by a Revenue Investigation officer \n• Pay fees (Frw 15,000/ for one lost number plate for vehicles; Frw 15,000 for lost motor cycle number plate) for duplicate plate \n• Have no arrears with traffic police \n• RRA offices for collection of the plates.\nNote: Request can be done online by the taxpayer."
+        },
+        {
+          "id": 4,
+          "question": "What is the process for change of old motor vehicle/ cycle log book",
+          "answer": "• Return old log book\n• Pay Frw 5,000 fees for duplicate log book \n• In case there is missing or invisible digit on the chassis, you are required to follow the same procedures as if it was lost   \nNote: Request can be done online by the taxpayer."
+        },
+        {
+          "id": 5,
+          "question": "Change of old Motor vehicle/cycle number plate",
+          "answer": "• Motor vehicle /motor cycle physical checking form signed and stamped by a Revenue Investigation officer \n• Return old number plate (s) for destruction \n• Pay fees for duplicate plate (frw 15,000 for one piece for one old motor vehicle number plate; Frw 15,000 for an old motor cycle number plate)\nNote: \n1. Request can be done online by the taxpayer.\n2. Pay for two number plates in case it bears the old sticker."
+        },
+        {
+          "id": 6,
+          "question": "What is the process for Motor Vehicle/ cycle Ownership Transfer",
+          "answer": "For individual: \n• Request done online by the taxpayer specifically the seller has to do the request on RRA website \n• In case the seller is the one who is going to correct the plate number at the office he/she registers all his/her details but when they decide that the buyer is the one to correct the plate number then they put his/her details in the system upon motor vehicle transfer request.\n• RRA no longer request for insurances on private cars during transfer ownership\n• No more physical presence of both the seller and buyer at RRA office to sign on the transfer papers before RRA staff.\n• RRA system for motor vehicle transfers no longer gives the transfer date which used to take almost a month after request and when you have no tax arrears you can immediately go to the office of your choice and correct your plate number.\n• Notarized Contract of sale/cession/donation\n• 1 passport size photo for the buyer;\n• Photocopy of the ID Card or passport (for foreigners) for the buyer\n• Tax Identification Number for the buyer (TIN); \n• No more motor vehicle physical verification \n• Original vehicle Log Book;\n• The motor vehicle must be free from tax liabilities; \n• Transfer fees: Frw 60,000/ for vehicles Frw 30,000 for motor cycles\n\nCompanies/Organizations must present the:\n• Evidence of the legal status for associations and other legal entities; and RDB registration Certificate for companies \n• Board resolution  \nNote: \nIn case the seller is VAT registered he or she will have to present EBM Receipt."
+        },
+        {
+          "id": 7,
+          "question": "How can I process motor vehicle off-road (suspension)",
+          "answer": "Vehicle owners may decide to put their vehicles off-road for a given period. This is done at no expense. The proprietor is required to meet the following RRA procedures:\n1. Complete and submit an off-road declaration form;\n2. Submit Motor vehicle number plates (pair);\n3. Submit the log-book (Yellow Card);\nUpon submission of the above requirements, a taxpayer is given an off-road certificate.\nNote: The motor vehicle / cycle must be free from tax arrears."
+        },
+        {
+          "id": 8,
+          "question": "How to get transfer of auctioned Motor vehicle/ Motor cycle by Government Agencies (GR, RDF, RNP)",
+          "answer": "• Have sales agreement\n• Get auction report\n• Show payment receipt\n• Pay registration fees depending on the vehicle/ Motorcycle engine capacity  \n• Present « Acquit de droit » or 'To Whom It May Concern' \n• Have 1 passport size photo for the buyer; Photocopy of the ID Card or passport (for foreigners) for the buyer and Tax Identification Number (TIN) for the buyer\n• The buyer is the one who processes and submits the request online himself."
+        },
+        {
+          "id": 9,
+          "question": "How to get transfer of auctioned Motor vehicle / Motor cycle carried out by RNP OR RRA for private owned plates",
+          "answer": "• Have a sales agreement\n• Get auction report\n• Get a payment receipt\n• Pay registration fees depending on the vehicle/ Motorcycle engine capacity \n• Possess « Acquit de droit » or 'To Whom It May Concern' \n• Present 1 passport size photo for the buyer; Photocopy of the ID Card or passport (for foreigners) for the buyer and Tax Identification Number (TIN) for the buyer."
+        }
+      ]
+    },
+    {
+      "category": "Tax Procedures Law",
+      "questions": [
+        {
+          "id": 1,
+          "question": "What is the rate of interests for late payment?",
+          "answer": "The rate of interests for late payment is fixed as follows:\n1. Zero point five per cent (0.5), if the taxpayer has recorded a delay not exceeding six (6) months with respect to the time limit for payment; \n2. One per cent (1%), if the taxpayer has recorded a delay of six (6) months in tax payment but not more than twelve (12) months; \n3. One point five percent (1.5%), if the taxpayer has recorded a delay of more than twelve (12) months.\nHowever, interests for late payment cannot exceed one hundred percent (100%) of the amount of tax."
+        },
+        {
+          "id": 2,
+          "question": "What is fixed administrative fine for taxpayers who commit wrongful acts?",
+          "answer": "Administrative fine related to violations of the provisions of the law is established as follows:\n1° fifty thousand Rwandan francs (FRW 50,000) for a natural person not engaged in any commercial activity or a taxpayer whose annual turnover is more than two million Rwandan francs (FRW 2,000,000) but not exceeding twenty million Rwandan francs (FRW 20,000,000);\n2° three hundred thousand Rwandan francs (FRW 300,000) if the taxpayer is a public institution or a non-profit making organization and if the taxpayer's annual turnover exceeds twenty million Rwandan francs (FRW 20,000,000);\n3° five hundred thousand Rwandan francs (FRW 500,000) if the taxpayer was informed by the Tax Administration that he or she is in the category of large taxpayers;\n4° five hundred thousand Rwandan francs (FRW 500,000) if the taxpayer fails to submit his or her certified annual financial statements as required by law; the fine is paid every month until he or she submits them;\nIf a person commits the same fault for the second time in two (2) years counted from the day of receipt of notification of fine for the first fault, the basic fine is doubled. In case the fault is committed for the third time in that period, the fine is four (4) times the basic administrative fine."
+        },
+        {
+          "id": 3,
+          "question": "What is the administrative fine for non-declaration of tax on time?",
+          "answer": "A taxpayer who fails to declare and pay tax within the time limit provided by law pays such a tax and is liable to an administrative fine as follows: \n1° twenty percent (20%) of due tax, if the time limit for payment extends for a period of time not exceeding thirty (30) days; \n2° forty percent (40%) of due tax, if the taxpayer paid within a period ranging from the thirty-first day (31st) to sixtieth (60th) day from the final date of payment; \n3° sixty percent (60%) of due tax, if the taxpayer exceeds the time limit for payment by more than sixty (60) days."
+        },
+        {
+          "id": 4,
+          "question": "What is the administrative fine for non-payment of tax on time?",
+          "answer": "A taxpayer who declares tax due within the time limit provided by law but who does not pay that tax in the prescribed time limit, pays the principal tax and an administrative fine as follows: \n1° five percent (5%) of due principal tax, when the taxpayer exceeds the time limit for payment for a period not exceeding thirty (30) days from the final date of payment; \n2° twenty percent (10%) of the principal tax due, if the taxpayer paid within a period ranging from the thirty-first (31st) day to sixtieth (60th) day from the final date of payment; \n3° thirty percent (30%) of principal tax due, if the taxpayer exceeds the time limit for payment by more than sixty (60) days from the final date of payment."
+        },
+        {
+          "id": 5,
+          "question": "What is the fine for failure to comply with the use of electronic invoicing system for taxpayers not registered in the Value Added Tax?",
+          "answer": "Any person who is required to issue an invoice generated by an electronic invoicing system recognized by the Tax Administration who fails to do so is liable to an administrative fine of two (2) times the value of the transaction."
+        },
+        {
+          "id": 6,
+          "question": "What is the fine related to the Value Added Tax violation?",
+          "answer": "1° if a person carried out business activities without being registered on Value Added Tax where it was so required, he or she is liable to an administrative fine of fifty percent (50%) of the amount of Value Added Tax due for the entire period of operation of the business; \n2° if a non-Value Added Tax registered person issues a Value Added Tax invoice, he or she is liable to an administrative fine of one hundred percent (100%) of the Value Added Tax imposed and pays the tax indicated on that invoice; \n3° if a person issues an incorrect Value Added Tax invoice with intention to decrease the amount of Value Added Tax payable or to increase the Value Added Tax input credit, he or she is liable to an administrative fine of one hundred percent (100%) of the amount of the Value Added Tax payable.\n4° A public entity and a taxpayer authorized to withhold the Value Added Tax that fail to withhold the Value Added Tax or that withheld Value Added Tax and failed to pay the tax withheld to the Tax Administration pay the Tax not withheld or not paid plus fines and interests for late payment as provided the law."
+        },
+        {
+          "id": 7,
+          "question": "What is the fine for failure to use electronic invoicing system by a person registered for the Value Added Tax?",
+          "answer": "A person registered for the Value Added Tax who sells goods or services without issuing an electronic invoice is liable to an administrative fine of ten (10) times the value of the evaded Value Added Tax. In case the fault referred to in Paragraph One of this Article is repeated within a period of two (2) years, the defaulter is liable to an administrative fine of twenty (20) times the value of the evaded Value Added Tax."
+        },
+        {
+          "id": 8,
+          "question": "What is the penalty for non-compliance with obligations of the user of electronic invoicing system?",
+          "answer": "A person who fails to comply with obligations of the user of the electronic invoicing system provided for under Article 18 of this Law is liable to an administrative fine of two hundred thousand Rwandan francs (FRW 200,000). \nIn case the fault referred to in Paragraph One of this Article is repeated within a period of two (2) years, the administrative fine is increased to four hundred thousand Rwandan francs (FRW 400,000). \nA person registered to the Value Added Tax who carries out a taxable transaction and who delivers an electronic invoice with undervalued price or quantity of goods or services is liable to an administrative fine of ten (10) times the value of the evaded Value Added Tax. \nIn case the fault referred to in Paragraph 3 of this Article is repeated within a period of two (2) years, the administrative fine is increased to twenty (20) times the value of the Value Added Tax evaded."
+        }
+      ]
+    },
+    {
+      "category": "Business Registration / Deregistration",
+      "questions": [
+        {
+          "id": 1,
+          "question": "How can I find online business deregistration form at RRA website?",
+          "answer": "• Go to www.rra.gov.rw\n• Choose domestic tax services\n• Click on registration & De-registration\n• Go to 'Forms'\n• Click on 'Read more' \n• Choose the appropriate form depending on the type of business (individual, company) or the type of tax (PAYE). The form is opened in PDF, ready for print out."
+        },
+        {
+          "id": 2,
+          "question": "What is a Taxpayer Identification Number (TIN)?",
+          "answer": "This is a unique number, which is issued to a taxpayer by the tax Administration. Note that Taxpayer Identification Number (TIN) is offered free of charge."
+        },
+        {
+          "id": 3,
+          "question": "How can someone get a TIN?",
+          "answer": "Subject to the provisions of other Laws related to the registration of legal entities, a person who sets up a business registers the business with the Registrar General. However, a person who carries out non-commercial activities which can generate tax has the responsibility to register with tax Administration."
+        },
+        {
+          "id": 4,
+          "question": "How can I register the business (Registration of company and individual enterprises) through RDB website?",
+          "answer": "Step 1. Go to www.rdb.rw\nStep 2. Click on e-services\nStep 3. Click on business registration\nStep 4. Click on register here (create your account by filling the table)\nStep 5. Login (By using the email ID and password created on step 4)\nStep 6. Register your business\nStep 7. Choose domestic for company or enterprise for individual enterprise\nStep 8. Fill the required information and follow the process \nStep 9. Attach your scanned ID or other document\nStep 10. Check the update through online dashboard (Maximum expected time: 6 hours)\nStep 11. To print registration certificate, Click on certificates."
+        },
+        {
+          "id": 5,
+          "question": "How can I register the business on VAT (VAT registration of company and individual enterprises) through RDB website?",
+          "answer": "Step 1. Go to www.rdb.rw\nStep 2. Log in (By using the same email ID and password created during company registration)\nStep 3. Click on request for VAT certificate\nStep 4. Click on proceed\nStep 5. Enter company turnover or expected turnover\nStep 6. Click on Submit\nStep 7. Go to certificate\nStep 8. Choose Value Added Tax \nStep 9. Click on filter\nStep 10. Clink on print."
+        },
+        {
+          "id": 6,
+          "question": "How can I request for tax account inactivity online?",
+          "answer": "Step 1:\nDownload de-registration form though RRA website:\n• Go to www.rra.gov.rw, \n• Choose domestic tax services, \n• Click on registration & deregistration\n• Go to Forms, then choose the form needed whether for company or Individual. \n• Fill the form properly then scan it in PDF format with representative ID as one Document, if married use both IDs, and save it. (Should save all as one Document)\n\nStep 2:\nBack to RRA website www.rra.gov.rw,\n• Go to Pay Domestic Taxes Here\n• Login with TIN and password\n• Then go to online request menu\n• Chooses Inactivate Request then Chose the Tax you want to deactivate\n• Type in the reason for de-registration \n• Browse the Saved filled form and Submit."
+        },
+        {
+          "id": 7,
+          "question": "How can I request for the Business deregistration online?",
+          "answer": "1. Taxpayer has to declare all declarations from the start date up to the date s/he needs to apply for deregistration.\n2. Taxpayer will download de-registration form though rra website:  www.rra.gov.rw, domestic tax services, registration & deregistration, Form, read more  and fill it properly and attach an ID or PASSPORT  copy . Taxpayer scans it in PDF format and save it.\n3. Taxpayer logins with his TIN and password\n4. Taxpayer passes through online request menu\n5. Taxpayer chooses de-registration request and submit \n6. Taxpayer types the reason for de-registration \n7. Taxpayer uploads the de-registration form and ID for Rwandan or PASSPORT for foreigner scanned in PDF format and submits the request."
+        }
+      ]
+    },
+    {
+      "category": "Value Added Tax (VAT)",
+      "questions": [
+        {
+          "id": 1,
+          "question": "What does it require to register for VAT?",
+          "answer": "A taxpayer must register for VAT if his/her turnover is above FRW 20,000,000 for any twelve-month period, or above FRW 5,000,000 for three consecutive months. In addition, any taxpayer may choose to register voluntary for VAT."
+        },
+        {
+          "id": 2,
+          "question": "Value added tax declaration periods",
+          "answer": "VAT is declared and paid on a monthly basis. Alternatively, taxpayers with annual turnover below FRW 200,000,000 may request to declare on a quarterly basis. Whether monthly or quarterly, the VAT declaration must be submitted and paid by the 15th of the month following the end of the tax period."
+        },
+        {
+          "id": 3,
+          "question": "The quarters for taxpayers declaring VAT on a quarterly basis concern the tax period between:",
+          "answer": "• January 1st to March 31st must be declared and paid by 15th April.\n• April 1st to June 30th must be declared and paid by 15th July.\n• July 1st to September 30th must be declared and paid by 15th October.\n• October 1st to December 31st   must be declared and paid by 15th January."
+        },
+        {
+          "id": 4,
+          "question": "Which items is VAT charged on?",
+          "answer": "Value added tax is charged on:\na) taxable goods and services, including online supplies;\nb) and taxable imported goods and services."
+        },
+        {
+          "id": 5,
+          "question": "What is the difference between input and output VAT?",
+          "answer": "Input VAT: the refundable value added tax paid by the taxpayer in respect of taxable goods and services he or she has to use in his or her business activity;\nOutput VAT: value added tax charged by a taxpayer on the sale by him or her of taxable goods or services;"
+        },
+        {
+          "id": 6,
+          "question": "What are the requirements for claiming an input tax?",
+          "answer": "The taxpayer who claims for an input tax provides the following documents: \n• The value added tax invoice in the case of taxable goods and services supplied from the local market;   \n• Customs documents that proves the payment in case of taxable imported goods."
+        },
+        {
+          "id": 7,
+          "question": "What are the rates for value added tax?",
+          "answer": "1° zero percent (0%) on taxable goods or services that are zero-rated;\n2° eighteen (18%) percent for other goods and services."
+        },
+        {
+          "id": 8,
+          "question": "What do VAT inclusive and VAT exclusive prices mean?",
+          "answer": "The VAT inclusive price means the price of the goods or service including VAT. The VAT exclusive price means the price of the goods or service that is not the final cost, to which VAT has not yet been added."
+        },
+        {
+          "id": 9,
+          "question": "What is a VAT refund?",
+          "answer": "It is possible for the final VAT due of a taxpayer to be negative. In this case, the taxpayer is due a VAT refund. If the VAT refund claimed is a small amount relative to the size of the business, as decided by RRA, this will be carried forward and will automatically be used to offset against future VAT payments. This is determined by the scale of the business as below:\n• Small taxpayer carries forward up to FRW500000 \n• Medium taxpayers carries forward up to FRW2000000\n• Large taxpayer carries forward up to FRW 5000000."
+        },
+        {
+          "id": 10,
+          "question": "Requirements for claiming an input tax",
+          "answer": "The taxpayer who claims for an input tax provides the following documents:  \n• The value added tax invoice in the case of taxable goods and services supplied from the local market;   \n• Customs documents that proves the payment in case of taxable imported goods."
+        },
+        {
+          "id": 11,
+          "question": "What is a VAT Reverse Charge?",
+          "answer": "If a local taxpayer is the recipient of services from a foreign supplier, the local taxpayer is required to pay the VAT on this service. The local taxpayer must declare and pay 18% of the value of the services received. This VAT may be offset as an input tax only if the services received are not available in the local market. Services are considered not to be available in Rwanda if there is no one who can deliver identical or similar services on the local market. If the services are available on the local market, then the VAT may not be offset as an input tax. This is to encourage taxpayers to work with domestic businesses."
+        },
+        {
+          "id": 12,
+          "question": "How will the final consumer be rewarded?",
+          "answer": "A final consumer who presents the tax administration with an electronic invoice is granted a reward on the value added tax paid on each invoice. An Order of the Minister will determine the value of the reward and the conditions for granting such a reward."
+        },
+        {
+          "id": 13,
+          "question": "What are the conditions for quarterly and monthly VAT declaration?",
+          "answer": "• A taxpayer whose annual turnover is equal to or less than FRW 200,000,000, declares the value added tax quarterly within 15 days after the end of each quarter.\n• A taxpayer whose annual turnover is more than FRW 200,000,000, declares the value added tax monthly within 15 days after the end of the month.\n• However, a taxpayer whose annual turnover is equal to or less than FRW 200,000,000 and who intends to opt for a monthly value added tax declaration is authorised to do so."
+        },
+        {
+          "id": 14,
+          "question": "What is the Value added tax point?",
+          "answer": "The tax point for the supply of goods and services is the one that is the earliest among the following:\na) The date on which the invoice is issued; \nb) The date on which payment of goods and services is made, including partial payment. However, this does not apply to advance payment made in construction services;\nc) The date on which goods are either removed from the premises of the supplier or given to the recipient;\nd) The date on which the service is delivered;\ne) The date on which a taxpayer applies for deregistration from VAT."
+        }
+      ]
+    },
+    {
+      "category": "Withholding Tax (WHT)",
+      "questions": [
+        {
+          "id": 1,
+          "question": "What is the WHT rate on employment income?",
+          "answer": "The withholding tax on employment income is paid according to the rates provided in the tables below: \nTable 1: From November 2022 to October 2023\nMonthly Taxable Income in Rwandan francs (FRW)\nFrom 0 to 60,000: Tax rate 0%\nFrom 60,001 to 100,000: Tax rate 20%\nFrom 100,001 and above: Tax rate 30%\n\nTable 2: From November 2023 onwards\nMonthly Taxable Income in Rwandan francs (FRW)\nFrom 0 to 60,000: Tax rate 0%\nFrom 60,001 to 100,000: Tax rate 10%\nFrom 100,001 to 200,000: Tax rate 20%\nFrom 200,001 and above: Tax rate 30%\n\nEmployment income from a casual labourer is subject to tax on the special rate of fifteen percent (15%). However, in computing casual labourer's tax, an income not exceeding sixty thousand Rwandan francs (60,000 FRW) per month is rated at zero percent (0%)."
+        },
+        {
+          "id": 2,
+          "question": "How much tax does RRA Withhold on goods imported for commercial use?",
+          "answer": "A withholding tax of five percent (5%) of the value of goods imported for commercial use shall be paid at custom on the cost insurance and freight (CIF) value before the goods are released by customs. The withholding tax referred to above shall be deducted from the income tax when it is declared and paid."
+        },
+        {
+          "id": 3,
+          "question": "What is Withholding tax rate on allowance to a Board member?",
+          "answer": "Withholding tax on allowance allocated to a member of the Board of directors and any other member of a similar organ, is taxable at a rate of thirty percent (30%)."
+        },
+        {
+          "id": 4,
+          "question": "What is the rate for Withholding tax on public tenders?",
+          "answer": "A withholding tax on public tenders of three percent (3%) of the sum of invoice, excluding the Value Added Tax (VAT), is retained when successful bidders of public tenders are paid. However, a tax of fifteen percent (15%) shall be withheld on public tenders if the recipient is not registered with the Tax Administration or is registered but does not have his/her previous income tax declaration. A withholding tax on payment made to a person registered with the Tax Administration shall be deducted from income tax during the income tax declaration and its payment."
+        },
+        {
+          "id": 5,
+          "question": "What is the time for declaration of withholding taxes?",
+          "answer": "The person who withholds taxes is required to file a tax declaration and make payment in accordance with the procedures prescribed by the Tax Administration within a period of fifteen (15) days after the month in which the taxes were withheld."
+        }
+      ]
+    }
+  ]
+}

@@ -148,8 +148,33 @@ const operationalFundsValidation = [
 
 const borrowingIdValidation = [param("id").isInt().withMessage("Valid borrowing ID is required")]
 
-// Routes
-// Borrowing operations
+
+router.post(
+  "/borrowing/:id/repayment",
+  authenticate,
+  tenantIsolation,
+  handleValidationErrors, 
+  fundingController.recordBorrowingRepayment,
+)
+
+
+router.put(
+  "/operational/:id/amount",
+  authenticate,
+  tenantIsolation,
+  handleValidationErrors,
+  fundingController.updateOperationalFundsAmount
+)
+
+
+router.get(
+  "/operational/:id/history",
+  authenticate,
+  tenantIsolation,
+  handleValidationErrors,
+  fundingController.getOperationalHistory
+)
+
 router.post(
   "/borrowing",
   authenticate,

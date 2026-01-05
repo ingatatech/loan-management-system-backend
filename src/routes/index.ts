@@ -18,6 +18,8 @@ import BookKeepingRoutes from './BookKeepingRoutes'
 import loanAnalysisReportRoutes from "./loanAnalysisReportRoutes";
 import LoanDisbursementRoutes from "./LoanDisbursementRoutes";
 import clientBorrowerAccountRoutes from "./clientBorrowerAccountRoutes";
+import lanPortfolioAnalysisRoutes from "./loanPortfolioAnalysisRoutes";
+
 const router = Router();
 
 router.get("/health", (req, res) => {
@@ -76,5 +78,6 @@ router.use("/organizations/:organizationId/loan-analysis-reports",loanAnalysisRe
 router.use("/organizations/:organizationId/loan-disbursements", LoanDisbursementRoutes);
 router.use("/organizations/:organizationId/client-borrower-accounts", clientBorrowerAccountRoutes);
 
+router.use("/organizations/:organizationId/loan-portfolio-analysis", lanPortfolioAnalysisRoutes);
 
 export default router;

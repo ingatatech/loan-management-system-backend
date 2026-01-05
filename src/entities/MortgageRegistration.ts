@@ -32,6 +32,8 @@ export class MortgageRegistration {
 
   @Column({ type: "text" })
   rdbFeesFileUrl: string;
+  @Column({ type: "text", nullable: true })
+  mortgageRegistrationCertificateUrl: string | null;
 
   @Column({ type: "boolean", default: true })
   isActive: boolean;

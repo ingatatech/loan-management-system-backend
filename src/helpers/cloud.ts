@@ -1,8 +1,7 @@
-
 // @ts-nocheck
 import { v2 as cloudinary } from "cloudinary"
 import dotenv from "dotenv"
-import fs from 'fs';
+import { Readable } from 'stream';
 dotenv.config()
 
 cloudinary.config({
@@ -13,37 +12,21 @@ cloudinary.config({
 })
 
 export const UploadToCloud = async (file: Express.Multer.File, res?: Response, retries = 3) => {
-
-
   let lastError: any;
 
   // Pre-upload validation
-  
-  if (!fs.existsSync(file.path)) {
-    throw new Error(`File not found at path: ${file.path}`);
+  if (!file.buffer) {
+    throw new Error(`File buffer is missing for: ${file.originalname}`);
   }
-
-  const fileStats = fs.statSync(file.path);
-
-
-
-  try {
-    fs.accessSync(file.path, fs.constants.R_OK);
-  } catch (error: any) {
-  }
-
-
 
   try {
     await cloudinary.api.ping();
   } catch (connectionError: any) {
-
+    console.warn('Cloudinary connection warning:', connectionError.message);
   }
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-
-
       let uploadResponse;
       const baseUploadOptions: any = {
         use_filename: true,
@@ -54,6 +37,25 @@ export const UploadToCloud = async (file: Express.Multer.File, res?: Response, r
         invalidate: true,
       };
 
+      // Upload from buffer using upload_stream
+      const uploadFromBuffer = (buffer: Buffer, options: any): Promise<any> => {
+        return new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            options,
+            (error, result) => {
+              if (error) {
+                reject(error);
+              } else {
+                resolve(result);
+              }
+            }
+          );
+
+          // Create a readable stream from buffer
+          const bufferStream = Readable.from(buffer);
+          bufferStream.pipe(uploadStream);
+        });
+      };
 
       if (file.mimetype.startsWith("image/")) {
         const imageOptions = {
@@ -66,7 +68,7 @@ export const UploadToCloud = async (file: Express.Multer.File, res?: Response, r
           allowed_formats: ["jpg", "png", "gif", "webp", "bmp", "tiff"]
         };
         
-        uploadResponse = await cloudinary.uploader.upload(file.path, imageOptions);
+        uploadResponse = await uploadFromBuffer(file.buffer, imageOptions);
         
       } else if (file.mimetype.startsWith("audio/")) {
         const audioOptions = {
@@ -75,7 +77,7 @@ export const UploadToCloud = async (file: Express.Multer.File, res?: Response, r
           resource_type: "video",
         };
         
-        uploadResponse = await cloudinary.uploader.upload(file.path, audioOptions);
+        uploadResponse = await uploadFromBuffer(file.buffer, audioOptions);
         
       } else if (file.mimetype.startsWith("video/")) {
         const videoOptions = {
@@ -87,7 +89,7 @@ export const UploadToCloud = async (file: Express.Multer.File, res?: Response, r
           ],
         };
         
-        uploadResponse = await cloudinary.uploader.upload(file.path, videoOptions);
+        uploadResponse = await uploadFromBuffer(file.buffer, videoOptions);
         
       } else {
         const documentOptions = {
@@ -96,11 +98,10 @@ export const UploadToCloud = async (file: Express.Multer.File, res?: Response, r
           resource_type: "raw",
         };
         
-        uploadResponse = await cloudinary.uploader.upload(file.path, documentOptions);
+        uploadResponse = await uploadFromBuffer(file.buffer, documentOptions);
       }
 
-
-
+      // Test the uploaded URL
       try {
         const https = require('https');
         const http = require('http');
@@ -116,7 +117,6 @@ export const UploadToCloud = async (file: Express.Multer.File, res?: Response, r
             method: 'HEAD',
             timeout: 10000
           }, (res: any) => {
-
             if (res.statusCode === 200) {
               resolve(true);
             } else {
@@ -135,6 +135,7 @@ export const UploadToCloud = async (file: Express.Multer.File, res?: Response, r
         
         await testPromise;
       } catch (urlTestError: any) {
+        console.warn('URL test warning:', urlTestError.message);
       }
 
       const result = {
@@ -151,17 +152,15 @@ export const UploadToCloud = async (file: Express.Multer.File, res?: Response, r
         created_at: uploadResponse.created_at
       };
 
-
       return result;
 
     } catch (error: any) {
       lastError = error;
 
-
-
       if (error.code === 'ETIMEDOUT' || error.code === 'ECONNRESET' || error.code === 'ENOTFOUND') {
-
+        console.warn(`Network error on attempt ${attempt}:`, error.code);
       }
+      
       const retryableErrors = ['ETIMEDOUT', 'ECONNRESET', 'ENOTFOUND', 'TimeoutError'];
       const isRetryable = retryableErrors.includes(error.name) || 
                          retryableErrors.includes(error.code) || 
@@ -170,7 +169,7 @@ export const UploadToCloud = async (file: Express.Multer.File, res?: Response, r
 
       if (attempt < retries && isRetryable) {
         const waitTime = Math.min(attempt * 2000, 10000);
-
+        console.log(`Retrying upload for ${file.originalname} in ${waitTime}ms (attempt ${attempt + 1}/${retries})`);
         await new Promise((resolve) => setTimeout(resolve, waitTime));
         continue;
       }
@@ -181,12 +180,11 @@ export const UploadToCloud = async (file: Express.Multer.File, res?: Response, r
     }
   }
 
-
-
   throw new Error(
     `Failed to upload ${file.originalname} after ${retries} attempts: ${lastError?.message || "Unknown error"}`
   );
 }
+
 // Function to delete files from Cloudinary with retry
 export const DeleteFromCloud = async (
   publicId: string,
@@ -305,7 +303,9 @@ export const UploadMultipleToCloud = async (files: Express.Multer.File[]): Promi
     }
   }
 
-
+  if (errors.length > 0) {
+    console.warn('Some files failed to upload:', errors)
+  }
 
   return results
 }

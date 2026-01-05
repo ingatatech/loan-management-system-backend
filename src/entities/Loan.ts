@@ -1,3 +1,4 @@
+
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -20,6 +21,21 @@ import { LoanReview } from "./LoanReview";
 import { Guarantor } from "./Guarantor"
 import { BouncedCheque } from "./BouncedCheque";
 import { LoanAnalysisReport } from "./LoanAnalysisReport";
+import { ClientBorrowerAccount } from "./ClientBorrowerAccount";
+
+export enum RepaymentModality {
+  SINGLE = "single",                        
+  MULTIPLE_WITH_INTEREST = "multiple_with_interest",
+  MULTIPLE_ONLY_INTEREST = "multiple_only_interest", 
+  CUSTOMIZED = "customized"               
+}
+
+export interface CustomScheduleItem {
+  installmentNumber: number;
+  dueDate: string;
+  amount: number;
+  notes?: string;
+}
 
 export enum BusinessStructure {
 
@@ -91,13 +107,18 @@ export enum MaritalStatus {
   WIDOWED = "widowed"
 }
 export enum PaymentPeriod {
-  THREE_MONTHS = "3_months",
-  SIX_MONTHS = "6_months",
-  ONE_YEAR = "1_year",
-  TWO_YEARS = "2_years",
-  THREE_YEARS = "3_years",
-  FOUR_YEARS = "4_years",
-  FIVE_YEARS = "5_years",
+    THREE_MONTHS = "3_months",
+  SIX_MONTHS = "6_months", 
+  NINE_MONTHS = "9_months",
+  ONE_YEAR = "12_months",
+  EIGHTEEN_MONTHS = "18_months",
+  TWO_YEARS = "24_months",
+  THREE_YEARS = "36_months",
+  FOUR_YEARS = "48_months",
+  FIVE_YEARS = "60_months",
+  TEN_YEARS = "120_months",
+  FIFTEEN_YEARS = "180_months",
+  TWENTY_YEARS = "240_months",
   CUSTOM = "custom"
 }
 // ✅ NEW: Income Source Interface for array storage
@@ -268,6 +289,23 @@ export class Loan {
   })
   borrowerType: BorrowerType;
 
+
+  @Column({
+    type: "enum",
+    enum: RepaymentModality,
+    default: RepaymentModality.MULTIPLE_WITH_INTEREST
+  })
+  repaymentModality: RepaymentModality;
+
+  @Column({ type: "jsonb", nullable: true })
+  customRepaymentSchedule: CustomScheduleItem[] | null;
+  
+  @Column({ type: "boolean", default: false })
+  isManualSchedule: boolean;
+
+  @Column({ type: "int", nullable: true })
+  singlePaymentMonths: number | null;
+
   @Column({ type: "jsonb", nullable: true })
   institutionProfile: InstitutionProfile | null;
 
@@ -276,6 +314,17 @@ export class Loan {
     enum: MaritalStatus,
     nullable: true
   })
+
+  @Column({ type: "boolean", default: false })
+  hasClientAccount: boolean;
+
+ @ManyToOne(() => ClientBorrowerAccount, (account) => account.loans, { nullable: true })
+  @JoinColumn({ name: "clientAccountId" })
+  clientAccount: ClientBorrowerAccount | null;
+
+  @Column({ type: "int", nullable: true })
+  clientAccountId: number | null;
+
   maritalStatus: MaritalStatus | null;
 
   @Column({ type: "varchar", length: 500, nullable: true })
@@ -570,8 +619,6 @@ export class Loan {
   @Column({ type: "varchar", length: 50, nullable: true })
   completionType: "rejected_close" | "approved_close" | null;
   
-  @Column({ type: "boolean", default: false })
-  hasClientAccount: boolean;
 
   @OneToMany(() => BouncedCheque, (bouncedCheques) => bouncedCheques.loan, {
     cascade: ["remove"],
@@ -944,6 +991,97 @@ hasRejectedAnalysisReport(): boolean {
       member.isAlsoGuarantor === true
     );
   }
+
+  
+    /**
+     * Get human-readable repayment modality description
+     */
+    getRepaymentModalityDescription(): string {
+      switch (this.repaymentModality) {
+        case RepaymentModality.SINGLE:
+          return "One lump sum payment";
+        case RepaymentModality.MULTIPLE_WITH_INTEREST:
+          return "Standard amortization";
+        case RepaymentModality.MULTIPLE_ONLY_INTEREST:
+          return "Interest-only with balloon payment";
+        case RepaymentModality.CUSTOMIZED:
+          return "Custom payment schedule";
+        default:
+          return "Standard amortization";
+      }
+    }
+  
+    /**
+     * Validate custom repayment schedule
+     */
+    validateCustomSchedule(): { valid: boolean; errors: string[] } {
+      const errors: string[] = [];
+  
+      if (this.repaymentModality !== RepaymentModality.CUSTOMIZED) {
+        return { valid: true, errors: [] };
+      }
+  
+      if (!this.customRepaymentSchedule || this.customRepaymentSchedule.length === 0) {
+        errors.push("Custom schedule is required for customized repayment modality");
+        return { valid: false, errors };
+      }
+  
+      // Calculate minimum required amount
+      const principal = this.disbursedAmount;
+      const annualRate = this.annualInterestRate || 0;
+      const months = this.termInMonths || 12;
+      
+      const minInterest = principal * (annualRate / 100) * (months / 12);
+      const minTotal = principal + minInterest;
+  
+      // Sum custom payments
+      const customTotal = this.customRepaymentSchedule.reduce(
+        (sum, item) => sum + item.amount, 
+        0
+      );
+  
+      if (customTotal < minTotal) {
+        errors.push(
+          `Custom schedule total (${customTotal.toFixed(2)}) is less than minimum required (${minTotal.toFixed(2)}). ` +
+          `Please add ${(minTotal - customTotal).toFixed(2)} to cover principal and interest.`
+        );
+      }
+  
+      // Validate chronological order
+      const dates = this.customRepaymentSchedule.map(item => new Date(item.dueDate));
+      for (let i = 1; i < dates.length; i++) {
+        if (dates[i] <= dates[i - 1]) {
+          errors.push("Payment dates must be in chronological order");
+          break;
+        }
+      }
+  
+      return {
+        valid: errors.length === 0,
+        errors
+      };
+    }
+  
+    /**
+     * Get schedule summary based on modality
+     */
+    getScheduleSummary(): {
+      modalityType: string;
+      description: string;
+      installmentCount: number;
+      specialNotes?: string;
+    } {
+      return {
+        modalityType: this.repaymentModality,
+        description: this.getRepaymentModalityDescription(),
+        installmentCount: this.customRepaymentSchedule?.length || this.totalNumberOfInstallments || 0,
+        specialNotes: this.repaymentModality === RepaymentModality.SINGLE
+          ? `Payment due after ${this.termInMonths} months`
+          : this.repaymentModality === RepaymentModality.MULTIPLE_ONLY_INTEREST
+          ? `${(this.totalNumberOfInstallments || 1) - 1} interest-only payments + 1 principal payment`
+          : undefined
+      };
+    }
 }
 
 

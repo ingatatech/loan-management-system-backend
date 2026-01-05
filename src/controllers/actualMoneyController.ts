@@ -51,9 +51,6 @@ class ActualMoneyController {
         return;
       }
 
-      console.log('=== GET ACTUAL MONEY REQUEST ===');
-      console.log('Organization ID:', organizationId);
-      console.log('Requested by user:', req.user?.id);
 
       const result = await this.actualMoneyService.calculateActualMoney(organizationId);
 
@@ -64,7 +61,6 @@ class ActualMoneyController {
       }
 
     } catch (error: any) {
-      console.error("Get actual money controller error:", error);
       res.status(500).json({
         success: false,
         message: "Internal server error while calculating actual money",
@@ -112,9 +108,6 @@ class ActualMoneyController {
         return;
       }
 
-      console.log('=== VALIDATE DISBURSEMENT REQUEST ===');
-      console.log('Organization ID:', organizationId);
-      console.log('Requested Amount:', requestedAmount);
 
       const result = await this.actualMoneyService.canDisburseLoan(
         organizationId, 
@@ -129,7 +122,6 @@ class ActualMoneyController {
       }
 
     } catch (error: any) {
-      console.error("Validate disbursement controller error:", error);
       res.status(500).json({
         success: false,
         message: "Internal server error while validating disbursement",

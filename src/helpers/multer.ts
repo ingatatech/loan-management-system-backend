@@ -1,7 +1,6 @@
 // @ts-nocheck
 import multer from "multer";
 import path from "path";
-import fs from "fs";
 import type { Request } from "express";
 import type { File } from "express";
 
@@ -65,48 +64,8 @@ const allAllowedExtensions = [
   ...allowedExtensions.code
 ];
 
-const ensureDirectoryExists = (dir: string) => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-};
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    let folder = "uploads/others";
-
-    if (file.mimetype.startsWith("image/")) {
-      folder = "uploads/images";
-    } else if (file.mimetype.startsWith("audio/")) {
-      folder = "uploads/audio";
-    } else if (file.mimetype.startsWith("video/")) {
-      folder = "uploads/video";
-    } else if (file.mimetype.startsWith("text/") ||
-      file.mimetype.includes("document") ||
-      file.mimetype.includes("pdf")) {
-      folder = "uploads/documents";
-    } else if (file.mimetype.includes("font")) {
-      folder = "uploads/fonts";
-    } else if (file.mimetype.includes("zip") ||
-      file.mimetype.includes("compressed")) {
-      folder = "uploads/archives";
-    } else if (file.mimetype.includes("application/x-msdownload") ||
-      file.mimetype.includes("application/x-executable")) {
-      folder = "uploads/executables";
-    } else if (file.mimetype.includes("application/javascript") ||
-      file.mimetype.includes("text/x-")) {
-      folder = "uploads/code";
-    }
-
-    ensureDirectoryExists(folder);
-    cb(null, folder);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}${ext}`;
-    cb(null, fileName);
-  },
-});
+// Use memory storage instead of disk storage
+const storage = multer.memoryStorage();
 
 const fileFilter = (req: Request, file: File, cb: multer.FileFilterCallback) => {
   const ext = path.extname(file.originalname).toLowerCase();
@@ -292,7 +251,7 @@ export const uploadFields = upload.fields([
   { name: "boardResolution", maxCount: 5 },
   { name: "shareholderCrbReport", maxCount: 10 },
   { name: "boardMemberCrbReport", maxCount: 10 },
-
+  { name: "upiFile", maxCount: 1 },
   // ========================================
   // ✅ NEW: Borrower Documents (Dynamic)
   // ========================================
@@ -318,8 +277,12 @@ export const uploadFields = upload.fields([
   { name: "notarisedAOMAFile", maxCount: 1 },
   { name: "rdbFeesFile", maxCount: 1 },
   { name: "proofOfDisbursementFile", maxCount: 1 },
-    { name: 'loanOfficerSignature', maxCount: 1 },
-    { name: 'managingDirectorSignature', maxCount: 1 }
+  { name: 'loanOfficerSignature', maxCount: 1 },
+  { name: 'managingDirectorSignature', maxCount: 1 },
+  { name: "mortgageRegistrationCertificate", maxCount: 1 },
+  { name: "paymentProofUrl", maxCount: 1 },
+  { name: "paymentProof", maxCount: 1 },
+  
 ]);
 export const uploadRequestedDocuments = upload.array("requestedDocuments", 50);
 export const uploadReviewAttachment = upload.array("requestedDocuments", 50);
