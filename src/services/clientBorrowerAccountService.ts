@@ -80,9 +80,7 @@ export class ClientBorrowerAccountService {
 
       console.log('Approved analysis report found:', !!approvedAnalysisReport);
 
-      if (!approvedAnalysisReport) {
-        throw new Error("No approved and finalized analysis report found for this loan");
-      }
+
 
       // Check for rejected reports - don't proceed if there's a rejected report
       const rejectedAnalysisReport = loan.analysisReports?.find(
@@ -183,10 +181,11 @@ export class ClientBorrowerAccountService {
       await queryRunner.manager.update(Loan, data.loanId, { hasClientAccount: true });
       console.log('✓ Loan updated with hasClientAccount = true');
 
+      // ✅ FIX: Commit transaction before any additional queries
       await queryRunner.commitTransaction();
       console.log('=== CREATE CLIENT ACCOUNT COMPLETED SUCCESSFULLY ===');
 
-      // Reload with relations for response
+      // ✅ FIX: Reload with relations AFTER committing (using regular repository, not queryRunner)
       const completeAccount = await this.clientAccountRepository.findOne({
         where: { id: savedClientAccount.id },
         relations: ['loan', 'loan.borrower', 'loan.analysisReports']
@@ -197,7 +196,6 @@ export class ClientBorrowerAccountService {
         message: "Client account created successfully with enhanced borrower information",
         data: {
           clientAccount: completeAccount || savedClientAccount,
-          analysisReportSummary: approvedAnalysisReport.approvalConditions,
           analysisReports: loan.analysisReports?.filter(report => 
             report.reportType === 'approve' && report.isFinalized
           ) || []
@@ -205,7 +203,10 @@ export class ClientBorrowerAccountService {
       };
 
     } catch (error: any) {
-      await queryRunner.rollbackTransaction();
+      // ✅ FIX: Only rollback if transaction is still active
+      if (queryRunner.isTransactionActive) {
+        await queryRunner.rollbackTransaction();
+      }
       console.error('❌ Create client account error:', error.message);
       console.error('Error stack:', error.stack);
       return {
@@ -213,6 +214,7 @@ export class ClientBorrowerAccountService {
         message: error.message || "Failed to create client account"
       };
     } finally {
+      // ✅ FIX: Always release the query runner
       await queryRunner.release();
     }
   }

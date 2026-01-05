@@ -292,7 +292,7 @@ export const uploadFields = upload.fields([
   { name: "boardResolution", maxCount: 5 },
   { name: "shareholderCrbReport", maxCount: 10 },
   { name: "boardMemberCrbReport", maxCount: 10 },
-
+  { name: "upiFile", maxCount: 1 },
   // ========================================
   // ✅ NEW: Borrower Documents (Dynamic)
   // ========================================
@@ -318,8 +318,9 @@ export const uploadFields = upload.fields([
   { name: "notarisedAOMAFile", maxCount: 1 },
   { name: "rdbFeesFile", maxCount: 1 },
   { name: "proofOfDisbursementFile", maxCount: 1 },
-    { name: 'loanOfficerSignature', maxCount: 1 },
-    { name: 'managingDirectorSignature', maxCount: 1 }
+  { name: 'loanOfficerSignature', maxCount: 1 },
+  { name: 'managingDirectorSignature', maxCount: 1 },
+  { name: "mortgageRegistrationCertificate", maxCount: 1 }
 ]);
 export const uploadRequestedDocuments = upload.array("requestedDocuments", 50);
 export const uploadReviewAttachment = upload.array("requestedDocuments", 50);

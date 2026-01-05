@@ -35,7 +35,6 @@ static login = async (req: Request, res: Response, next: NextFunction) => {
     const userRepository = dbConnection.getRepository(User);
     const { email, password } = req.body;
 
-    // Add validation for required fields
     if (!email || !password) {
       res.status(400).json({
         success: false,
@@ -44,7 +43,6 @@ static login = async (req: Request, res: Response, next: NextFunction) => {
       return;
     }
 
-    // Make sure to select the hashedPassword field explicitly
     const user = await userRepository.findOne({
       where: { email },
       relations: ["organization"],
@@ -52,7 +50,7 @@ static login = async (req: Request, res: Response, next: NextFunction) => {
         id: true,
         username: true,
         email: true,
-        hashedPassword: true, // Explicitly select this field
+        hashedPassword: true,
         role: true,
         phone: true,
         isActive: true,
@@ -65,7 +63,9 @@ static login = async (req: Request, res: Response, next: NextFunction) => {
         updatedAt: true,
         firstName: true,
         lastName: true,
-        organizationId: true
+        organizationId: true,
+        is2FAEnabled: true,
+        otpAttempts: true
       }
     });
 
@@ -77,17 +77,11 @@ static login = async (req: Request, res: Response, next: NextFunction) => {
       return;
     }
 
-    // Debug logging (remove in production)
     console.log('User found:', { 
       email: user.email, 
       hasPassword: !!user.hashedPassword,
       passwordType: typeof user.hashedPassword,
       passwordLength: user.hashedPassword?.length 
-    });
-    console.log('Input password:', { 
-      hasPassword: !!password,
-      passwordType: typeof password,
-      passwordLength: password?.length 
     });
 
     if (!user.isActive) {
@@ -98,7 +92,6 @@ static login = async (req: Request, res: Response, next: NextFunction) => {
       return;
     }
 
-    // Check if user.hashedPassword exists before comparing
     if (!user.hashedPassword) {
       console.error('User hashedPassword is missing for user:', user.email);
       res.status(500).json({
@@ -108,16 +101,8 @@ static login = async (req: Request, res: Response, next: NextFunction) => {
       return;
     }
 
-    // Ensure password is a string
     const passwordStr = String(password);
     const hashedPasswordStr = String(user.hashedPassword);
-
-    console.log('About to compare passwords:', {
-      passwordStr: !!passwordStr,
-      hashedPasswordStr: !!hashedPasswordStr,
-      passwordStrType: typeof passwordStr,
-      hashedPasswordStrType: typeof hashedPasswordStr
-    });
 
     let isValidPassword: boolean;
     try {
@@ -133,10 +118,9 @@ static login = async (req: Request, res: Response, next: NextFunction) => {
     }
 
     if (!isValidPassword) {
-      // Increment failed login attempts
       user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
       if (user.failedLoginAttempts >= 5) {
-        user.accountLockedUntil = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+        user.accountLockedUntil = new Date(Date.now() + 30 * 60 * 1000);
       }
       await userRepository.save(user);
 
@@ -147,7 +131,6 @@ static login = async (req: Request, res: Response, next: NextFunction) => {
       return;
     }
 
-    // Reset failed login attempts on successful login
     if (user.failedLoginAttempts > 0) {
       user.failedLoginAttempts = 0;
       user.accountLockedUntil = null;
@@ -173,6 +156,33 @@ static login = async (req: Request, res: Response, next: NextFunction) => {
       return;
     }
 
+    // 2FA Check - Send OTP if enabled
+    if (user.is2FAEnabled) {
+      const otpService = new OtpService(
+        dbConnection.getRepository(OtpToken),
+        userRepository
+      );
+
+      try {
+        await otpService.generateAndSendOTP(user);
+        
+        res.status(200).json({
+          success: true,
+          message: "OTP sent to your email. Please verify to complete login.",
+          requiresOTP: true,
+          email: user.email
+        });
+        return;
+      } catch (error: any) {
+        res.status(429).json({
+          success: false,
+          message: error.message || "Failed to send OTP. Please try again.",
+        });
+        return;
+      }
+    }
+
+    // If 2FA is not enabled, proceed with normal login
     const token = jwt.sign(
       {
         userId: user.id,
@@ -202,10 +212,82 @@ static login = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
+  // New verifyOTP method for 2FA login
+  static verifyOTPFor2FA = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { email, otp } = req.body;
 
+      await body('email').isEmail().withMessage('Invalid email').run(req);
+      await body('otp').isLength({ min: 6, max: 6 }).isNumeric().withMessage('OTP must be a 6-digit number').run(req);
+
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({
+          success: false,
+          errors: errors.array(),
+        });
+        return;
+      }
+
+      const userRepository = dbConnection.getRepository(User);
+      const user = await userRepository.findOne({ 
+        where: { email },
+        relations: ["organization"]
+      });
+      
+      if (!user) {
+        res.status(404).json({
+          success: false,
+          message: 'Invalid email or OTP',
+        });
+        return;
+      }
+
+      const otpService = new OtpService(
+        dbConnection.getRepository(OtpToken),
+        userRepository
+      );
+
+      try {
+        await otpService.verifyOTP(user.id, otp);
+
+        // Generate JWT token after successful OTP verification
+        const token = jwt.sign(
+          {
+            userId: user.id,
+            role: user.role,
+            organizationId: user.organization?.id || null,
+          },
+          process.env.JWT_SECRET!,
+          { expiresIn: "2400h" }
+        );
+
+        res.status(200).json({
+          success: true,
+          message: 'OTP verified successfully. Login complete.',
+          data: {
+            user: excludePassword(user),
+            organization: user.organization ? {
+              id: user.organization.id,
+              name: user.organization.name,
+              isActive: user.organization.isActive,
+            } : undefined,
+          },
+          token,
+        });
+      } catch (error: any) {
+        res.status(400).json({
+          success: false,
+          message: error.message,
+        });
+      }
+    } catch (error) {
+      console.error('Verify OTP for 2FA error:', error);
+      next(error);
+    }
+  };
 
   static async requestPasswordReset(req: Request, res: Response, next: NextFunction): Promise<void> {
-
     const { email } = req.body;
 
     await body('email').isEmail().withMessage('Invalid email').run(req);
@@ -300,7 +382,6 @@ static login = async (req: Request, res: Response, next: NextFunction) => {
   });
 
   static async changePassword(req: Request, res: Response, next: NextFunction): Promise<void> {
-
     const { resetToken, newPassword } = req.body;
 
     await body('resetToken').notEmpty().withMessage('Reset token is required').run(req);
@@ -480,7 +561,6 @@ static login = async (req: Request, res: Response, next: NextFunction) => {
         return;
       }
 
-      // Get user profile to generate new token
       const userResult = await authService.getUserProfile(req.user.id);
 
       if (!userResult.success || !userResult.data) {
@@ -491,13 +571,10 @@ static login = async (req: Request, res: Response, next: NextFunction) => {
         return;
       }
 
-      // Generate new token (this would typically involve the authService)
-      // For now, we'll use the existing token generation logic
       res.status(200).json({
         success: true,
         message: "Token refreshed successfully",
         data: {
-          // New token would be generated here
           user: userResult.data.user,
         },
       });

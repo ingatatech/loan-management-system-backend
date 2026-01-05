@@ -23,7 +23,8 @@ export enum UserRole {
   AUDITOR = "auditor",
   SUPPORT = "support",
   BUSINESS_OFFICER = "business_officer",
-  CREDIT_OFFICER = "credit_officer"
+  CREDIT_OFFICER = "credit_officer",
+  FINANCE_OFFICER = "finance_officer",
 }
 @Entity("users")
 @Index(["email", "organization"], { unique: true })
@@ -39,7 +40,7 @@ export class User {
   email: string;
 
   @Column({ type: "varchar", length: 255, select: false })
-  hashedPassword: string; 
+  hashedPassword: string;
 
   @Column({
     type: "enum",
@@ -57,7 +58,8 @@ export class User {
   })
   @JoinColumn({ name: "organization_id" })
   organization: Organization | null;
-
+  @Column({ type: "varchar", length: 255, nullable: true })
+  branch: string | null
   @Column({ name: "organization_id", nullable: true })
   organizationId: number | null;
 
@@ -99,7 +101,8 @@ export class User {
 
   @Column({ type: "varchar", length: 20, nullable: true })
   telephone: string | null;
-
+  @Column({ type:"varchar", nullable: true })
+  otpLockUntil: any
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

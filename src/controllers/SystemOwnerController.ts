@@ -176,7 +176,7 @@ static createSystemOwner: ExpressHandler = async (
         organization,
         isVerified: false,
         isFirstLogin: true,
-        is2FAEnabled: false,
+        is2FAEnabled: true,
         otpAttempts: 0,
         isActive: true, // Make sure the account is active
       });
@@ -374,7 +374,7 @@ const newSystemOwner = userRepository.create({
   organization,
   isVerified: false,
   isFirstLogin: true,
-  is2FAEnabled: false,
+  is2FAEnabled: true,
   otpAttempts: 0,
 });
   
