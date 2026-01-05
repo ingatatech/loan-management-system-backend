@@ -549,6 +549,7 @@ export interface BorrowerProfileData {
   nationalIdSector?: string;
   parentsInformation?: ParentsInformation;
   borrowerDocuments?: BorrowerDocument[];
+  placeOfBirth?: string;
 }
 
 // NEW INTERFACE FOR EXTENDED DATA

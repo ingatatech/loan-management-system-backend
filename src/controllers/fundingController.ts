@@ -3,7 +3,6 @@
 import type { Response, NextFunction } from "express"
 import { validationResult } from "express-validator"
 import dbConnection from "../db";
-
 import { Borrowing } from "../entities/Borrowing"
 import { GrantedFunds } from "../entities/GrantedFunds"
 import { OperationalFunds } from "../entities/OperationalFunds"
@@ -13,7 +12,6 @@ import type { AuthenticatedRequest } from "../middleware/auth"
 import { ShareCapital } from "../entities/ShareCapital";
 import { IndividualShareholder } from "../entities/IndividualShareholder";
 import { InstitutionShareholder } from "../entities/InstitutionShareholder";
-import db from "../config/db";
 export class FundingController {
   private fundingService: FundingService
 
@@ -27,6 +25,221 @@ export class FundingController {
       dbConnection.getRepository(IndividualShareholder),
       dbConnection.getRepository(InstitutionShareholder),
     )
+  }
+
+  updateOperationalFundsAmount = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      console.log("🚀 [CONTROLLER DEBUG] Starting updateOperationalFundsAmount");
+
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        console.error("❌ [CONTROLLER DEBUG] Validation errors:", errors.array());
+        return res.status(400).json({
+          success: false,
+          message: "Validation failed",
+          errors: errors.array(),
+        });
+      }
+
+      const { id } = req.params;
+      const operationalId = Number.parseInt(id);
+      const updateData = req.body;
+
+      console.log("📝 [CONTROLLER DEBUG] Update data:", JSON.stringify(updateData, null, 2));
+
+      // Get user info for history tracking
+      const performedBy = req.user?.id;
+      const performedByName = req.user?.name || req.user?.username || 'System';
+
+      const result = await this.fundingService.updateOperationalFundsAmount(
+        operationalId,
+        updateData,
+        performedBy,
+        performedByName
+      );
+
+      console.log("✅ [CONTROLLER DEBUG] Update successful");
+
+      res.status(200).json({
+        success: true,
+        message: `Operational funds ${updateData.type} recorded successfully`,
+        data: result,
+      });
+    } catch (error: any) {
+      console.error("❌ [CONTROLLER ERROR] Failed to update operational funds:", error);
+
+      let statusCode = 500;
+      let errorMessage = error.message || "Failed to update operational funds";
+
+      if (error.message.includes("not found")) {
+        statusCode = 404;
+        errorMessage = "Operational fund record not found";
+      } else if (error.message.includes("must be positive")) {
+        statusCode = 400;
+      } else if (error.message.includes("cannot exceed")) {
+        statusCode = 400;
+      }
+
+      res.status(statusCode).json({
+        success: false,
+        message: errorMessage
+      });
+    }
+  }
+
+  getOperationalHistory = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const operationalId = Number.parseInt(id);
+
+      const history = await this.fundingService.getOperationalHistory(operationalId);
+
+      res.status(200).json({
+        success: true,
+        data: history,
+      });
+    } catch (error: any) {
+      console.error("❌ [CONTROLLER ERROR] Failed to get operational history:", error);
+
+      let statusCode = 500;
+      let errorMessage = error.message || "Failed to get operational history";
+
+      if (error.message.includes("not found")) {
+        statusCode = 404;
+        errorMessage = "Operational fund record not found";
+      }
+
+      res.status(statusCode).json({
+        success: false,
+        message: errorMessage
+      });
+    }
+  }
+
+  recordBorrowingRepayment = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      console.log("🚀 [CONTROLLER DEBUG] Starting recordBorrowingRepayment");
+
+      // Validation
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        console.error("❌ [CONTROLLER DEBUG] Validation errors:", errors.array());
+        return res.status(400).json({
+          success: false,
+          message: "Validation failed",
+          errors: errors.array(),
+        });
+      }
+
+      const { id } = req.params;
+      const borrowingId = Number.parseInt(id);
+
+      // Extract repayments array from the request body
+      const { repayments } = req.body;
+
+      console.log("📝 [CONTROLLER DEBUG] Request body:", JSON.stringify(req.body, null, 2));
+      console.log("📝 [CONTROLLER DEBUG] Extracted repayments:", JSON.stringify(repayments, null, 2));
+
+      // Validate that repayments exists and is an array
+      if (!repayments || !Array.isArray(repayments)) {
+        console.error("❌ [CONTROLLER DEBUG] repayments is not an array");
+        return res.status(400).json({
+          success: false,
+          message: "repayments must be an array",
+          errors: [{ message: "repayments must be an array" }]
+        });
+      }
+
+      if (repayments.length === 0) {
+        console.error("❌ [CONTROLLER DEBUG] No repayments provided");
+        return res.status(400).json({
+          success: false,
+          message: "At least one repayment is required",
+          errors: [{ message: "At least one repayment is required" }]
+        });
+      }
+
+      // Validate each repayment has required fields and proper values
+      for (let i = 0; i < repayments.length; i++) {
+        const repayment = repayments[i];
+
+        // Check for required fields
+        const missingFields = [];
+        if (!repayment.amount || repayment.amount === "") missingFields.push("amount");
+        if (!repayment.paymentDate) missingFields.push("paymentDate");
+        if (!repayment.interestAmount) missingFields.push("interestAmount");
+        if (!repayment.paymentMethod) missingFields.push("paymentMethod");
+        if (!repayment.paymentReference) missingFields.push("paymentReference");
+
+        if (missingFields.length > 0) {
+          return res.status(400).json({
+            success: false,
+            message: `Repayment ${i + 1}: Missing required fields: ${missingFields.join(", ")}`,
+            errors: [{ message: `Repayment ${i + 1}: Missing required fields: ${missingFields.join(", ")}` }]
+          });
+        }
+
+        // Validate amount is a valid number
+        const amount = parseFloat(repayment.amount);
+        if (isNaN(amount) || amount <= 0) {
+          return res.status(400).json({
+            success: false,
+            message: `Repayment ${i + 1}: Amount must be a positive number`,
+            errors: [{ message: `Repayment ${i + 1}: Amount must be a positive number` }]
+          });
+        }
+
+        // Round to 2 decimal places to avoid floating point issues
+        const roundedAmount = parseFloat(amount.toFixed(2));
+        if (Math.abs(amount - roundedAmount) > 0.001) {
+          return res.status(400).json({
+            success: false,
+            message: `Repayment ${i + 1}: Amount should have at most 2 decimal places`,
+            errors: [{ message: `Repayment ${i + 1}: Amount should have at most 2 decimal places` }]
+          });
+        }
+
+        // Update repayment amount with rounded value
+        repayments[i].amount = roundedAmount.toString();
+      }
+
+      console.log("✅ [CONTROLLER DEBUG] All validations passed");
+      console.log("🔄 [CONTROLLER DEBUG] Calling fundingService.recordBorrowingRepayment...");
+
+      const result = await this.fundingService.recordBorrowingRepayment(borrowingId, repayments);
+
+      console.log("✅ [CONTROLLER DEBUG] Service call successful");
+      console.log("📤 [CONTROLLER DEBUG] Sending success response");
+
+      res.status(200).json({
+        success: true,
+        message: "Repayment(s) recorded successfully",
+        data: result,
+      });
+
+    } catch (error: any) {
+      console.error("❌ [CONTROLLER ERROR] Failed to record repayment:", error);
+
+      // Provide specific error messages
+      let statusCode = 500;
+      let errorMessage = error.message || "Failed to record repayment";
+
+      if (error.message.includes("not found")) {
+        statusCode = 404;
+        errorMessage = "Borrowing record not found";
+      } else if (error.message.includes("exceeds remaining principal")) {
+        statusCode = 400;
+      } else if (error.message.includes("Invalid repayment amount")) {
+        statusCode = 400;
+      } else if (error.message.includes("required")) {
+        statusCode = 400;
+      }
+
+      res.status(statusCode).json({
+        success: false,
+        message: errorMessage
+      });
+    }
   }
 
   recordBorrowing = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -92,7 +305,7 @@ export class FundingController {
       // Step 3: Prepare grant data
       console.log("📋 [CONTROLLER DEBUG] Step 3: Preparing grant data...");
       const grantData = req.body;
-      
+
       // Log specific problematic fields
       console.log("📅 [CONTROLLER DEBUG] Date fields in request:");
       console.log("  - grantDate:", grantData.grantDate);
@@ -119,7 +332,7 @@ export class FundingController {
     } catch (error: any) {
       console.error("❌ [CONTROLLER DEBUG] Error in recordGrantedFunds:", error);
       console.error("❌ [CONTROLLER DEBUG] Error stack:", error.stack);
-      
+
       // Provide more specific error messages
       let errorMessage = "Failed to record granted funds";
       let statusCode = 500;
@@ -178,7 +391,7 @@ export class FundingController {
     }
   }
 
- getFundingStructure = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  getFundingStructure = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const organizationId = req.user!.organizationId!
       const fundingStructure = await this.fundingService.getFundingStructure(organizationId)
@@ -235,7 +448,7 @@ export class FundingController {
     }
   }
 
- recordShareCapital = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  recordShareCapital = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
@@ -251,7 +464,7 @@ export class FundingController {
 
       // Handle file uploads
       const files = req.files as { paymentProof?: Express.Multer.File[] };
-      const shareCapitalRepository= dbConnection.getRepository(ShareCapital);
+      const shareCapitalRepository = dbConnection.getRepository(ShareCapital);
       // Check if record exists before creating/updating
       const existingRecord = await this.fundingService.shareCapitalRepository.findOne({
         where: {
@@ -262,7 +475,7 @@ export class FundingController {
       });
 
       const shareCapital = await this.fundingService.recordShareCapital(
-        shareCapitalData, 
+        shareCapitalData,
         organizationId,
         files
       )
@@ -270,7 +483,7 @@ export class FundingController {
       // Determine response message based on whether record was updated or created
       const isNewRecord = !existingRecord;
       let message = "Share capital contribution recorded successfully";
-      
+
       if (!isNewRecord) {
         const previousTotal = existingRecord.totalContributedCapitalValue;
         const newTotal = shareCapital.totalContributedCapitalValue;
@@ -292,32 +505,32 @@ export class FundingController {
       })
     }
   }
-updateShareCapital = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params
-    const shareCapitalId = Number.parseInt(id)
-    
-    // Handle file uploads
-    const files = req.files as { paymentProof?: Express.Multer.File[] };
+  updateShareCapital = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params
+      const shareCapitalId = Number.parseInt(id)
 
-    const shareCapital = await this.fundingService.updateShareCapital(
-      shareCapitalId, 
-      req.body,
-      files
-    )
+      // Handle file uploads
+      const files = req.files as { paymentProof?: Express.Multer.File[] };
 
-    res.status(200).json({
-      success: true,
-      message: "Share capital contribution updated successfully",
-      data: shareCapital,
-    })
-  } catch (error: any) {
-    res.status(500).json({
-      success: false,
-      message: error.message || "Failed to update share capital contribution",
-    })
+      const shareCapital = await this.fundingService.updateShareCapital(
+        shareCapitalId,
+        req.body,
+        files
+      )
+
+      res.status(200).json({
+        success: true,
+        message: "Share capital contribution updated successfully",
+        data: shareCapital,
+      })
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: error.message || "Failed to update share capital contribution",
+      })
+    }
   }
-}
 
   deleteShareCapital = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
@@ -355,142 +568,141 @@ updateShareCapital = async (req: AuthenticatedRequest, res: Response, next: Next
     }
   }
 
-  // Add these methods to the FundingController class:
 
-updateGrantedFunds = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  try {
-    console.log("🎯 [CONTROLLER DEBUG] Starting updateGrantedFunds");
-    
-    const errors = validationResult(req)
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
+  updateGrantedFunds = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      console.log("🎯 [CONTROLLER DEBUG] Starting updateGrantedFunds");
+
+      const errors = validationResult(req)
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation failed",
+          errors: errors.array(),
+        })
+      }
+
+      const { id } = req.params
+      const grantId = Number.parseInt(id)
+      const grantData = req.body
+
+      const grantedFunds = await this.fundingService.updateGrantedFunds(grantId, grantData)
+
+      res.status(200).json({
+        success: true,
+        message: "Granted funds updated successfully",
+        data: grantedFunds,
+      })
+    } catch (error: any) {
+      console.error("❌ [CONTROLLER DEBUG] Error in updateGrantedFunds:", error);
+
+      let errorMessage = "Failed to update granted funds";
+      let statusCode = 500;
+
+      if (error.message.includes("not found")) {
+        errorMessage = "Grant record not found";
+        statusCode = 404;
+      } else if (error.message.includes("invalid input syntax for type date")) {
+        errorMessage = "Invalid date format provided";
+        statusCode = 400;
+      }
+
+      res.status(statusCode).json({
         success: false,
-        message: "Validation failed",
-        errors: errors.array(),
+        message: errorMessage,
       })
     }
-
-    const { id } = req.params
-    const grantId = Number.parseInt(id)
-    const grantData = req.body
-
-    const grantedFunds = await this.fundingService.updateGrantedFunds(grantId, grantData)
-
-    res.status(200).json({
-      success: true,
-      message: "Granted funds updated successfully",
-      data: grantedFunds,
-    })
-  } catch (error: any) {
-    console.error("❌ [CONTROLLER DEBUG] Error in updateGrantedFunds:", error);
-    
-    let errorMessage = "Failed to update granted funds";
-    let statusCode = 500;
-
-    if (error.message.includes("not found")) {
-      errorMessage = "Grant record not found";
-      statusCode = 404;
-    } else if (error.message.includes("invalid input syntax for type date")) {
-      errorMessage = "Invalid date format provided";
-      statusCode = 400;
-    }
-
-    res.status(statusCode).json({
-      success: false,
-      message: errorMessage,
-    })
   }
-}
 
-deleteGrantedFunds = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params
-    const grantId = Number.parseInt(id)
+  deleteGrantedFunds = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params
+      const grantId = Number.parseInt(id)
 
-    await this.fundingService.deleteGrantedFunds(grantId)
+      await this.fundingService.deleteGrantedFunds(grantId)
 
-    res.status(200).json({
-      success: true,
-      message: "Granted funds deleted successfully",
-    })
-  } catch (error: any) {
-    let errorMessage = "Failed to delete granted funds";
-    let statusCode = 500;
+      res.status(200).json({
+        success: true,
+        message: "Granted funds deleted successfully",
+      })
+    } catch (error: any) {
+      let errorMessage = "Failed to delete granted funds";
+      let statusCode = 500;
 
-    if (error.message.includes("not found")) {
-      errorMessage = "Grant record not found";
-      statusCode = 404;
-    }
+      if (error.message.includes("not found")) {
+        errorMessage = "Grant record not found";
+        statusCode = 404;
+      }
 
-    res.status(statusCode).json({
-      success: false,
-      message: errorMessage,
-    })
-  }
-}
-
-updateOperationalFunds = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  try {
-    const errors = validationResult(req)
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
+      res.status(statusCode).json({
         success: false,
-        message: "Validation failed",
-        errors: errors.array(),
+        message: errorMessage,
       })
     }
-
-    const { id } = req.params
-    const operationalId = Number.parseInt(id)
-    const operationalData = req.body
-
-    const operationalFunds = await this.fundingService.updateOperationalFunds(operationalId, operationalData)
-
-    res.status(200).json({
-      success: true,
-      message: "Operational funds updated successfully",
-      data: operationalFunds,
-    })
-  } catch (error: any) {
-    let errorMessage = "Failed to update operational funds";
-    let statusCode = 500;
-
-    if (error.message.includes("not found")) {
-      errorMessage = "Operational fund record not found";
-      statusCode = 404;
-    }
-
-    res.status(statusCode).json({
-      success: false,
-      message: errorMessage,
-    })
   }
-}
 
-deleteOperationalFunds = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params
-    const operationalId = Number.parseInt(id)
+  updateOperationalFunds = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const errors = validationResult(req)
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation failed",
+          errors: errors.array(),
+        })
+      }
 
-    await this.fundingService.deleteOperationalFunds(operationalId)
+      const { id } = req.params
+      const operationalId = Number.parseInt(id)
+      const operationalData = req.body
 
-    res.status(200).json({
-      success: true,
-      message: "Operational funds deleted successfully",
-    })
-  } catch (error: any) {
-    let errorMessage = "Failed to delete operational funds";
-    let statusCode = 500;
+      const operationalFunds = await this.fundingService.updateOperationalFunds(operationalId, operationalData)
 
-    if (error.message.includes("not found")) {
-      errorMessage = "Operational fund record not found";
-      statusCode = 404;
+      res.status(200).json({
+        success: true,
+        message: "Operational funds updated successfully",
+        data: operationalFunds,
+      })
+    } catch (error: any) {
+      let errorMessage = "Failed to update operational funds";
+      let statusCode = 500;
+
+      if (error.message.includes("not found")) {
+        errorMessage = "Operational fund record not found";
+        statusCode = 404;
+      }
+
+      res.status(statusCode).json({
+        success: false,
+        message: errorMessage,
+      })
     }
-
-    res.status(statusCode).json({
-      success: false,
-      message: errorMessage,
-    })
   }
-}
+
+  deleteOperationalFunds = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params
+      const operationalId = Number.parseInt(id)
+
+      await this.fundingService.deleteOperationalFunds(operationalId)
+
+      res.status(200).json({
+        success: true,
+        message: "Operational funds deleted successfully",
+      })
+    } catch (error: any) {
+      let errorMessage = "Failed to delete operational funds";
+      let statusCode = 500;
+
+      if (error.message.includes("not found")) {
+        errorMessage = "Operational fund record not found";
+        statusCode = 404;
+      }
+
+      res.status(statusCode).json({
+        success: false,
+        message: errorMessage,
+      })
+    }
+  }
 }

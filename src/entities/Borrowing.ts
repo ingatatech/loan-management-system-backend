@@ -129,6 +129,20 @@ export class Borrowing {
   @Column({ type: "boolean", default: true })
   isActive: boolean;
 
+  @Column("jsonb", {
+    nullable: true,
+    default: () => "'[]'::jsonb"
+  })
+  repaymentHistory: Array<{
+    amount: number;
+    paymentDate: string;
+    paymentMethod: string;
+    paymentReference: string;
+    interestAmount: string
+    notes?: string;
+    recordedAt: Date;
+  }> | null;
+
   @ManyToOne(() => Organization, (organization) => organization.borrowings, {
     nullable: false,
     onDelete: "CASCADE",
@@ -167,9 +181,11 @@ export class Borrowing {
     return numerator / denominator;
   }
 
+  // SIMPLIFIED: Progress based on principal reduction only
   getPaymentProgress(): number {
-    const totalRepayment = this.calculateTotalRepayment();
-    return totalRepayment > 0 ? (this.amountPaid / totalRepayment) * 100 : 0;
+    const amountBorrowed = Number(this.amountBorrowed) || 0;
+    const amountPaid = Number(this.amountPaid) || 0;
+    return amountBorrowed > 0 ? (amountPaid / amountBorrowed) * 100 : 100;
   }
 
   getDaysUntilMaturity(): number {
@@ -202,11 +218,60 @@ export class Borrowing {
     return pending.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())[0];
   }
 
+  // SIMPLIFIED: Update outstanding balance based on simple formula
   updateOutstandingBalance(): void {
-    this.outstandingBalance = this.calculateTotalRepayment() - this.amountPaid;
+    const amountBorrowed = Number(this.amountBorrowed) || 0;
+    const amountPaid = Number(this.amountPaid) || 0;
+    this.outstandingBalance = Math.max(0, amountBorrowed - amountPaid);
   }
 
   canBeRestructured(): boolean {
     return this.status === BorrowingStatus.ACTIVE && this.getPaymentProgress() > 0;
+  }
+
+  getTotalRepaid(): number {
+    if (!this.repaymentHistory || this.repaymentHistory.length === 0) {
+      return Number(this.amountPaid) || 0;
+    }
+
+    return this.repaymentHistory.reduce((total, repayment) => total + repayment.amount, 0);
+  }
+
+  addRepaymentToHistory(repayment: {
+    amount: number;
+    paymentDate: string;
+    paymentMethod: string;
+    paymentReference: string;
+    interestAmount: string;
+    notes?: string;
+  }): void {
+    if (!this.repaymentHistory) {
+      this.repaymentHistory = [];
+    }
+
+    this.repaymentHistory.push({
+      ...repayment,
+      recordedAt: new Date()
+    });
+  }
+
+  // Check if repayment can be accepted
+  canAcceptRepayment(amount: number): boolean {
+    const amountBorrowed = Number(this.amountBorrowed) || 0;
+    const amountPaid = Number(this.amountPaid) || 0;
+    const remainingPrincipal = amountBorrowed - amountPaid;
+    return amount > 0 && amount <= remainingPrincipal;
+  }
+
+  // Apply repayment to principal
+  applyRepayment(amount: number): void {
+    const currentAmountPaid = Number(this.amountPaid) || 0;
+    this.amountPaid = currentAmountPaid + amount;
+    this.updateOutstandingBalance();
+    
+    // Update status if fully paid
+    if (this.outstandingBalance <= 0) {
+      this.status = BorrowingStatus.FULLY_PAID;
+    }
   }
 }

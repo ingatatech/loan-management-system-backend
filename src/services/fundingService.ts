@@ -1,7 +1,7 @@
-// @ts-nocheck
 
+// @ts-nocheck
 import type { Repository } from "typeorm"
-import type { Borrowing } from "../entities/Borrowing"
+import { BorrowingStatus, type Borrowing } from "../entities/Borrowing"
 import type { GrantedFunds } from "../entities/GrantedFunds"
 import type { OperationalFunds } from "../entities/OperationalFunds"
 import type { Organization } from "../entities/Organization"
@@ -20,6 +20,375 @@ export class FundingService {
     private individualShareholderRepository: Repository<IndividualShareholder>,
     private institutionShareholderRepository: Repository<InstitutionShareholder>,
   ) {}
+
+
+async recordBorrowingRepayment(borrowingId: number, repayments: any[]) {
+  console.log("🚀 [SERVICE DEBUG] Starting recordBorrowingRepayment");
+  console.log("📝 [SERVICE DEBUG] Borrowing ID:", borrowingId);
+  console.log("📝 [SERVICE DEBUG] Repayments:", JSON.stringify(repayments, null, 2));
+
+  // Validate repayments parameter
+  if (!repayments || !Array.isArray(repayments)) {
+    throw new Error("repayments must be an array");
+  }
+
+  if (repayments.length === 0) {
+    throw new Error("At least one repayment is required");
+  }
+
+  // Find the borrowing record
+  const borrowing = await this.borrowingRepository.findOne({
+    where: { id: borrowingId }
+  });
+
+  if (!borrowing) {
+    throw new Error("Borrowing record not found");
+  }
+
+  console.log("✅ [SERVICE DEBUG] Found borrowing record:", {
+    id: borrowing.id,
+    amountBorrowed: borrowing.amountBorrowed,
+    amountPaid: borrowing.amountPaid,
+    outstandingBalance: borrowing.outstandingBalance
+  });
+
+  // Initialize repaymentHistory if it doesn't exist
+  if (!borrowing.repaymentHistory) {
+    borrowing.repaymentHistory = [];
+  }
+
+  // Helper function to handle decimal numbers safely
+  const toDecimal = (value: any, decimals: number = 2): number => {
+    if (value === null || value === undefined) return 0;
+    const num = typeof value === 'string' ? parseFloat(value) : Number(value);
+    return parseFloat(num.toFixed(decimals));
+  };
+
+  // Get current amounts as numbers with proper decimal handling
+  const currentAmountBorrowed = toDecimal(borrowing.amountBorrowed);
+  const currentAmountPaid = toDecimal(borrowing.amountPaid);
+  const currentOutstandingBalance = toDecimal(borrowing.outstandingBalance);
+  
+  console.log(`📊 [SERVICE DEBUG] Current amounts (rounded to 2 decimals):`);
+  console.log(`   Amount Borrowed: ${currentAmountBorrowed}`);
+  console.log(`   Amount Paid: ${currentAmountPaid}`);
+  console.log(`   Outstanding Balance: ${currentOutstandingBalance}`);
+
+  // Process each repayment
+  const recordedRepayments = [];
+  let totalRepaymentAmount = 0;
+
+  for (let i = 0; i < repayments.length; i++) {
+    const repayment = repayments[i];
+    console.log(`🔍 [SERVICE DEBUG] Processing repayment ${i + 1}:`, repayment);
+
+    // Validate required fields
+    if (!repayment.amount) {
+      throw new Error(`Repayment ${i + 1}: Amount is required`);
+    }
+    if (!repayment.paymentDate) {
+      throw new Error(`Repayment ${i + 1}: Payment date is required`);
+    }
+    if (!repayment.paymentMethod) {
+      throw new Error(`Repayment ${i + 1}: Payment method is required`);
+    }
+        if (!repayment.interestAmount) {
+      throw new Error(`Repayment ${i + 1}: Interest amount is required`);
+    }
+    if (!repayment.paymentReference) {
+      throw new Error(`Repayment ${i + 1}: Payment reference is required`);
+    }
+        if (!repayment.interestAmount) {
+      throw new Error(`Repayment ${i + 1}: Interest amount is required`);
+    }
+
+    // Convert amount to number with proper decimal handling
+    const amount = toDecimal(repayment.amount);
+    if (isNaN(amount) || amount <= 0) {
+      throw new Error(`Repayment ${i + 1}: Invalid repayment amount`);
+    }
+
+    // Validate that repayment doesn't exceed remaining principal
+    const remainingPrincipal = currentAmountBorrowed - (currentAmountPaid + totalRepaymentAmount);
+    const roundedRemainingPrincipal = toDecimal(remainingPrincipal);
+    
+    console.log(`📊 [SERVICE DEBUG] Repayment ${i + 1} validation:`);
+    console.log(`   Amount: ${amount}`);
+    console.log(`   Remaining Principal: ${roundedRemainingPrincipal}`);
+    
+    if (amount > roundedRemainingPrincipal + 0.01) { // Allow small rounding differences
+      throw new Error(`Repayment ${i + 1}: Repayment amount (${amount}) exceeds remaining principal (${roundedRemainingPrincipal})`);
+    }
+
+    // Create repayment record for history with exact amount
+    const repaymentRecord = {
+      amount: amount,
+      paymentDate: new Date(repayment.paymentDate).toISOString().split('T')[0],
+      paymentMethod: repayment.paymentMethod,
+      paymentReference: repayment.paymentReference,
+      interestAmount: repayment.interestAmount,
+      notes: repayment.notes || '',
+      recordedAt: new Date()
+    };
+
+    // Use the entity method to add repayment
+    borrowing.addRepaymentToHistory(repaymentRecord);
+    recordedRepayments.push(repaymentRecord);
+
+    // Update totals
+    totalRepaymentAmount = toDecimal(totalRepaymentAmount + amount);
+    console.log(`✅ [SERVICE DEBUG] Repayment ${i + 1} processed successfully`);
+    console.log(`   New total repayment amount: ${totalRepaymentAmount}`);
+  }
+
+  console.log(`📊 [SERVICE DEBUG] Total repayment amount (rounded): ${totalRepaymentAmount}`);
+
+  // Calculate new amounts with proper decimal handling
+  const newAmountPaid = toDecimal(currentAmountPaid + totalRepaymentAmount);
+  const newOutstandingBalance = toDecimal(currentAmountBorrowed - newAmountPaid);
+  
+  // Update borrowing amounts
+  borrowing.amountPaid = newAmountPaid;
+  borrowing.outstandingBalance = Math.max(0, newOutstandingBalance);
+
+  // Update status if fully paid (account for small rounding differences)
+  if (borrowing.outstandingBalance <= 0.01) {
+    borrowing.status = BorrowingStatus.FULLY_PAID;
+    borrowing.outstandingBalance = 0; // Set to exact 0 if fully paid
+  }
+
+  console.log(`📊 [SERVICE DEBUG] After repayment calculations:`);
+  console.log(`   New Amount Paid: ${borrowing.amountPaid}`);
+  console.log(`   New Outstanding Balance: ${borrowing.outstandingBalance}`);
+  console.log(`   New Status: ${borrowing.status}`);
+
+  // Update payment schedule if it exists
+  if (borrowing.paymentSchedule && borrowing.paymentSchedule.length > 0) {
+    console.log("🔄 [SERVICE DEBUG] Updating payment schedule...");
+    this.updatePaymentScheduleForRepayment(borrowing, repayments, totalRepaymentAmount);
+  } else {
+    console.log("⚠️ [SERVICE DEBUG] No payment schedule to update");
+  }
+
+  // Save the updated borrowing record
+  console.log("💾 [SERVICE DEBUG] Saving updated borrowing record...");
+  const updatedBorrowing = await this.borrowingRepository.save(borrowing);
+
+  console.log("✅ [SERVICE DEBUG] Successfully recorded repayment");
+  console.log("📊 [SERVICE DEBUG] Updated borrowing:", {
+    id: updatedBorrowing.id,
+    amountBorrowed: updatedBorrowing.amountBorrowed,
+    amountPaid: updatedBorrowing.amountPaid,
+    outstandingBalance: updatedBorrowing.outstandingBalance,
+    status: updatedBorrowing.status,
+    repaymentHistoryLength: updatedBorrowing.repaymentHistory?.length || 0
+  });
+
+  return {
+    borrowing: updatedBorrowing,
+    recordedRepayments,
+    totalAmountPaid: totalRepaymentAmount,
+    newOutstandingBalance: updatedBorrowing.outstandingBalance
+  };
+}
+
+private updatePaymentScheduleForRepayment(borrowing: Borrowing, repayments: any[], totalRepaymentAmount: number): void {
+  console.log("🔄 [SERVICE DEBUG] Updating payment schedule");
+  
+  if (!borrowing.paymentSchedule || borrowing.paymentSchedule.length === 0) {
+    console.log("⚠️ [SERVICE DEBUG] No payment schedule to update");
+    return;
+  }
+
+  // Get pending installments
+  const pendingInstallments = borrowing.paymentSchedule.filter(item => !item.isPaid);
+  if (pendingInstallments.length === 0) {
+    console.log("✅ [SERVICE DEBUG] All installments already paid");
+    return;
+  }
+
+  // Sort pending installments by due date
+  pendingInstallments.sort((a, b) => 
+    new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+  );
+  
+  console.log(`💰 [SERVICE DEBUG] Total repayment amount to apply: ${totalRepaymentAmount}`);
+  console.log(`📅 [SERVICE DEBUG] Pending installments: ${pendingInstallments.length}`);
+
+  let remainingAmount = totalRepaymentAmount;
+
+  for (const installment of pendingInstallments) {
+    if (remainingAmount <= 0) {
+      console.log("💸 [SERVICE DEBUG] No remaining amount to apply");
+      break;
+    }
+
+    const installmentRemaining = installment.totalAmount - (installment.paidAmount || 0);
+    const amountToApply = Math.min(remainingAmount, installmentRemaining);
+    
+    console.log(`📊 [SERVICE DEBUG] Installment ${installment.installmentNumber}:`);
+    console.log(`   Remaining on installment: ${installmentRemaining}`);
+    console.log(`   Amount to apply: ${amountToApply}`);
+    
+    // Update installment
+    installment.paidAmount = (installment.paidAmount || 0) + amountToApply;
+    installment.isPaid = installment.paidAmount >= installment.totalAmount;
+    
+    if (installment.isPaid) {
+      // Use the first repayment date
+      const paymentDate = repayments[0]?.paymentDate || new Date().toISOString().split('T')[0];
+      installment.paidDate = new Date(paymentDate);
+      console.log(`✅ [SERVICE DEBUG] Installment ${installment.installmentNumber} fully paid`);
+    } else {
+      console.log(`⚠️ [SERVICE DEBUG] Installment ${installment.installmentNumber} partially paid`);
+    }
+
+    remainingAmount -= amountToApply;
+    console.log(`💰 [SERVICE DEBUG] Remaining amount after installment: ${remainingAmount}`);
+  }
+
+  console.log("✅ [SERVICE DEBUG] Payment schedule updated");
+}
+
+async updateOperationalFundsAmount(
+  operationalId: number, 
+  updateData: { 
+    amount: number | string; 
+    type: 'injection' | 'withdrawal';
+    description: string;
+    transactionReference?: string;
+    notes?: string;
+    date?: Date;
+  },
+  performedBy?: number,
+  performedByName?: string
+) {
+  console.log("🚀 [SERVICE DEBUG] Starting updateOperationalFundsAmount");
+  console.log("📝 [SERVICE DEBUG] Operational ID:", operationalId);
+  console.log("📝 [SERVICE DEBUG] Update data:", updateData);
+
+  // Find the operational fund
+  const operationalFund = await this.operationalFundsRepository.findOne({ 
+    where: { id: operationalId } 
+  });
+  
+  if (!operationalFund) {
+    throw new Error("Operational fund record not found");
+  }
+
+  console.log("✅ [SERVICE DEBUG] Found operational fund:", {
+    id: operationalFund.id,
+    amountCommitted: operationalFund.amountCommitted,
+    amountUtilized: operationalFund.amountUtilized,
+    status: operationalFund.status
+  });
+
+  // Convert amount to number
+  const amount = typeof updateData.amount === 'string' 
+    ? parseFloat(updateData.amount) 
+    : Number(updateData.amount);
+    
+  if (isNaN(amount) || amount <= 0) {
+    throw new Error("Amount must be a positive number");
+  }
+
+  // Update operational fund based on type
+  let historyEntry;
+  if (updateData.type === 'injection') {
+    historyEntry = operationalFund.addInjection(
+      amount,
+      updateData.description,
+      performedBy,
+      performedByName,
+      updateData.transactionReference,
+      updateData.notes
+    );
+  } else if (updateData.type === 'withdrawal') {
+    historyEntry = operationalFund.addWithdrawal(
+      amount,
+      updateData.description,
+      performedBy,
+      performedByName,
+      updateData.transactionReference,
+      updateData.notes
+    );
+  } else {
+    throw new Error("Invalid update type. Must be 'injection' or 'withdrawal'");
+  }
+
+  // If date is provided, update the history entry date
+  if (updateData.date && operationalFund.operationalHistory.length > 0) {
+    const lastEntry = operationalFund.operationalHistory[operationalFund.operationalHistory.length - 1];
+    lastEntry.date = new Date(updateData.date);
+  }
+
+  console.log("📊 [SERVICE DEBUG] After update:", {
+    previousAmountCommitted: historyEntry.previousAmountCommitted,
+    newAmountCommitted: historyEntry.newAmountCommitted,
+    amountChange: historyEntry.amountInjected || historyEntry.amountWithdrawn,
+    amountCommitted: operationalFund.amountCommitted,
+    amountUtilized: operationalFund.amountUtilized,
+    status: operationalFund.status,
+    historyLength: operationalFund.operationalHistory.length
+  });
+
+  // Save the updated operational fund
+  console.log("💾 [SERVICE DEBUG] Saving updated operational fund...");
+  const updatedOperationalFund = await this.operationalFundsRepository.save(operationalFund);
+
+  console.log("✅ [SERVICE DEBUG] Successfully updated operational fund");
+  return updatedOperationalFund;
+}
+async getOperationalHistory(operationalId: number): Promise<{
+  fundDetails: {
+    id: number;
+    fundSource: string;
+    fundSourceDescription: string;
+    amountCommitted: number;
+    amountUtilized: number;
+    amountReserved: number;
+    status: string;
+    availableAmount: number;
+    utilizationPercentage: number;
+  };
+  history: any[];
+  totals: {
+    injections: number;
+    withdrawals: number;
+    netChange: number;
+  };
+}> {
+  const operationalFund = await this.operationalFundsRepository.findOne({ 
+    where: { id: operationalId } 
+  });
+  
+  if (!operationalFund) {
+    throw new Error("Operational fund record not found");
+  }
+
+  return {
+    fundDetails: {
+      id: operationalFund.id,
+      fundSource: operationalFund.fundSource,
+      fundSourceDescription: operationalFund.fundSourceDescription,
+      amountCommitted: operationalFund.amountCommitted,
+      amountUtilized: operationalFund.amountUtilized,
+      amountReserved: operationalFund.amountReserved,
+      status: operationalFund.status,
+      availableAmount: operationalFund.getAvailableAmount(),
+      utilizationPercentage: operationalFund.getUtilizationPercentage()
+    },
+    history: operationalFund.operationalHistory || [],
+    totals: {
+      injections: operationalFund.getTotalInjections(),
+      withdrawals: operationalFund.getTotalWithdrawals(),
+      netChange: operationalFund.getTotalInjections() - operationalFund.getTotalWithdrawals()
+    }
+  };
+}
+
+
+
 
   async recordBorrowing(borrowingData: Partial<Borrowing>, organizationId: number) {
     const organization = await this.organizationRepository.findOne({ where: { id: organizationId } })

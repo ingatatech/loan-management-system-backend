@@ -1,5 +1,5 @@
 
-
+// @ts-nocheck
 import { Router } from "express";
 import { body, param, query } from "express-validator";
 import LoanApplicationController from "../controllers/loanApplicationController";
@@ -20,25 +20,361 @@ router.use(authenticate);
 router.use(checkFirstLogin);
 router.use(tenantIsolationMiddleware);
 router.use(validateOrganizationOwnership);
+router.post(
+  "/",
+  uploadFields,
+  handleMulterError,
+  [
+    // Borrower information validation
+    body("firstName")
+      .if(body("borrowerType").equals("individual"))
+      .trim()
+      .notEmpty()
+      .withMessage("First name is required for individual borrowers"),
+    
+    body("lastName")
+      .if(body("borrowerType").equals("individual"))
+      .trim()
+      .notEmpty()
+      .withMessage("Last name is required for individual borrowers"),
+    
+    body("nationalId")
+      .if(body("borrowerType").equals("individual"))
+      .trim()
+      .notEmpty()
+      .withMessage("National ID is required for individual borrowers")
+      .isLength({ min: 16, max: 16 })
+      .withMessage("National ID must be 16 characters"),
+    
+    // ✅ NEW: National ID location validation
+    body("nationalIdDistrict")
+      .optional()
+      .trim()
+      .isLength({ max: 100 })
+      .withMessage("National ID district must be less than 100 characters"),
+    
+    body("nationalIdSector")
+      .optional()
+      .trim()
+      .isLength({ max: 100 })
+      .withMessage("National ID sector must be less than 100 characters"),
+    
+    body("gender")
+      .if(body("borrowerType").equals("individual"))
+      .isIn(Object.values(Gender))
+      .withMessage(`Gender must be one of: ${Object.values(Gender).join(", ")}`),
+    
+    body("dateOfBirth")
+      .if(body("borrowerType").equals("individual"))
+      .isISO8601()
+      .withMessage("Date of birth must be a valid date"),
+    
+    body("maritalStatus")
+      .if(body("borrowerType").equals("individual"))
+      .isIn(Object.values(MaritalStatus))
+      .withMessage(`Marital status must be one of: ${Object.values(MaritalStatus).join(", ")}`),
+    
+ 
+    
+    body("email")
+      .optional()
+      .trim()
+      .isEmail()
+      .withMessage("Email must be valid"),
+    
+    body("relationshipWithNDFSP")
+      .optional()
+      .isIn(Object.values(RelationshipType))
+      .withMessage(`Relationship must be one of: ${Object.values(RelationshipType).join(", ")}`),
+    
+
+    
+    // Address validation
+    body("address")
+      .custom((value) => {
+        let addressObj = value;
+        if (typeof value === 'string') {
+          try { 
+            addressObj = JSON.parse(value); 
+          } catch (e) { 
+            throw new Error('Address must be valid JSON'); 
+          }
+        }
+        if (typeof addressObj !== 'object') {
+          throw new Error('Address must be an object');
+        }
+        return true;
+      }),
+
+    // Loan validation
+    body("purposeOfLoan")
+      .trim()
+      .isLength({ min: 5, max: 500 })
+      .withMessage("Purpose of loan must be between 5 and 500 characters"),
+    
+    body("branchName")
+      .trim()
+      .notEmpty()
+      .withMessage("Branch name is required"),
+    
+    body("businessOfficer")
+      .trim()
+      .notEmpty()
+      .withMessage("Business officer is required"),
+    
+    body("disbursedAmount")
+      .isFloat({ min: 1000 })
+      .withMessage("Loan amount must be at least 1,000 RWF"),
+
+    // ✅ NEW: Payment frequency validation
+    body("paymentFrequency")
+      .optional()
+      .isIn(Object.values(RepaymentFrequency))
+      .withMessage(`Payment frequency must be one of: ${Object.values(RepaymentFrequency).join(", ")}`),
+    
+    // Income source validation
+    body("incomeSource")
+      .optional()
+      .isString()
+      .withMessage("Income source must be a string"),
+    
+    body("otherIncomeSource")
+      .optional()
+      .trim()
+      .isLength({ max: 200 })
+      .withMessage("Other income source must be less than 200 characters")
+      .custom((value, { req }) => {
+        if (req.body.incomeSource === "other" && (!value || value.trim() === "")) {
+          throw new Error("Please specify the income source when 'Other' is selected");
+        }
+        return true;
+      }),
+    
+    body("incomeFrequency")
+      .optional()
+      .isIn(Object.values(IncomeFrequency))
+      .withMessage(`Income frequency must be one of: ${Object.values(IncomeFrequency).join(", ")}`),
+    
+    body("incomeAmount")
+      .optional()
+      .isFloat({ min: 0 })
+      .withMessage("Income amount must be a positive number"),
+
+    // Business type and economic sector
+    body("businessType")
+      .optional()
+      .isIn(Object.values(BusinessType))
+      .withMessage("Invalid business type"),
+    
+    body("economicSector")
+      .optional()
+      .isIn(Object.values(EconomicSector))
+      .withMessage("Invalid economic sector"),
+    
+    // Collateral validation
+    body("collateralType")
+      .optional()
+      .isIn(Object.values(CollateralType))
+      .withMessage("Invalid collateral type"),
+    
+    body("collateralValue")
+      .optional()
+      .isFloat({ min: 0, max: 9999999999999.99 })
+      .withMessage("Collateral value must be between 0 and 9,999,999,999,999.99"),
+    
+    // Guarantor validation
+    body("guarantorName")
+      .optional()
+      .trim()
+      .isLength({ max: 100 })
+      .withMessage("Guarantor name must be less than 100 characters"),
+    
+    body("guarantorPhone")
+      .optional()
+      .trim()
+      .isLength({ max: 20 })
+      .withMessage("Guarantor phone must be less than 20 characters"),
+
+    // ✅ NEW: Document description validations
+    body("borrowerDocumentDescriptions")
+      .optional()
+      .custom((value) => {
+        if (typeof value === 'string') {
+          try {
+            JSON.parse(value);
+            return true;
+          } catch (e) {
+            throw new Error("Borrower document descriptions must be valid JSON array");
+          }
+        }
+        return true;
+      }),
+
+    body("shareholderAdditionalDocDescriptions")
+      .optional()
+      .custom((value) => {
+        if (typeof value === 'string') {
+          try {
+            JSON.parse(value);
+            return true;
+          } catch (e) {
+            throw new Error("Shareholder additional document descriptions must be valid JSON array");
+          }
+        }
+        return true;
+      }),
+
+    body("boardMemberAdditionalDocDescriptions")
+      .optional()
+      .custom((value) => {
+        if (typeof value === 'string') {
+          try {
+            JSON.parse(value);
+            return true;
+          } catch (e) {
+            throw new Error("Board member additional document descriptions must be valid JSON array");
+          }
+        }
+        return true;
+      }),
+
+    body("guarantorDocumentDescriptions")
+      .optional()
+      .custom((value) => {
+        if (typeof value === 'string') {
+          try {
+            JSON.parse(value);
+            return true;
+          } catch (e) {
+            throw new Error("Guarantor document descriptions must be valid JSON array");
+          }
+        }
+        return true;
+      }),
+
+    body("collateralAdditionalDocDescriptions")
+      .optional()
+      .custom((value) => {
+        if (typeof value === 'string') {
+          try {
+            JSON.parse(value);
+            return true;
+          } catch (e) {
+            throw new Error("Collateral additional document descriptions must be valid JSON array");
+          }
+        }
+        return true;
+      }),
+
+    handleValidationErrors,
+  ],
+  LoanApplicationController.createLoanApplication
+);
+
+router.get(
+    '/client-accounts/:accountNumber/loans',
+    LoanApplicationController.getLoansForAccount
+);
+
+router.get(
+    '/client-accounts/:accountNumber',
+    LoanApplicationController.getClientAccountDetails
+);
+router.get(
+  "/disbursed/stats",
+  [
+    handleValidationErrors,
+  ],
+  UpdatedLoanDisbursementController.getDisbursedLoansStats
+);
 
 
 router.get(
   "/disbursed",
-  authenticate,
+  [
+    query("page")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Page must be a positive integer"),
+    
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage("Limit must be between 1 and 100"),
+
+    query("search")
+      .optional()
+      .trim()
+      .isLength({ max: 100 })
+      .withMessage("Search query must not exceed 100 characters"),
+
+    query("dateFrom")
+      .optional()
+      .isISO8601()
+      .withMessage("Date from must be a valid ISO date"),
+
+    query("dateTo")
+      .optional()
+      .isISO8601()
+      .withMessage("Date to must be a valid ISO date"),
+
+    query("loanOfficer")
+      .optional()
+      .trim()
+      .isLength({ max: 100 })
+      .withMessage("Loan officer must not exceed 100 characters"),
+
+    query("branch")
+      .optional()
+      .trim()
+      .isLength({ max: 100 })
+      .withMessage("Branch must not exceed 100 characters"),
+
+    query("sortBy")
+      .optional()
+      .isIn([
+        'disbursementDate_desc',
+        'disbursementDate_asc',
+        'amount_desc',
+        'amount_asc',
+        'borrowerName_asc',
+        'daysOverdue_desc'
+      ])
+      .withMessage("Invalid sort option"),
+
+    query("borrowerType")
+      .optional()
+      .isIn(['individual', 'institution'])
+      .withMessage("Borrower type must be 'individual' or 'institution'"),
+
+    query("minAmount")
+      .optional()
+      .isFloat({ min: 0 })
+      .withMessage("Minimum amount must be a positive number"),
+
+    query("maxAmount")
+      .optional()
+      .isFloat({ min: 0 })
+      .withMessage("Maximum amount must be a positive number"),
+
+    handleValidationErrors,
+  ],
   UpdatedLoanDisbursementController.getDisbursedLoans
 );
 
+
 router.get(
   "/disbursed/:loanId",
-  authenticate,
+  [
+    param("loanId")
+      .isInt({ min: 1 })
+      .withMessage("Loan ID must be a positive integer"),
+
+    handleValidationErrors,
+  ],
   UpdatedLoanDisbursementController.getDisbursedLoanDetails
 );
 
-router.get(
-  "/disbursed/stats",
-  authenticate,
-  UpdatedLoanDisbursementController.getDisbursedLoansStats
-);
 
 
 router.post(
@@ -331,256 +667,6 @@ router.get(
   LoanApplicationController.getLoanApplications
 );
 
-router.post(
-  "/",
-  uploadFields,
-  handleMulterError,
-  [
-    // Borrower information validation
-    body("firstName")
-      .if(body("borrowerType").equals("individual"))
-      .trim()
-      .notEmpty()
-      .withMessage("First name is required for individual borrowers"),
-    
-    body("lastName")
-      .if(body("borrowerType").equals("individual"))
-      .trim()
-      .notEmpty()
-      .withMessage("Last name is required for individual borrowers"),
-    
-    body("nationalId")
-      .if(body("borrowerType").equals("individual"))
-      .trim()
-      .notEmpty()
-      .withMessage("National ID is required for individual borrowers")
-      .isLength({ min: 16, max: 16 })
-      .withMessage("National ID must be 16 characters"),
-    
-    // ✅ NEW: National ID location validation
-    body("nationalIdDistrict")
-      .optional()
-      .trim()
-      .isLength({ max: 100 })
-      .withMessage("National ID district must be less than 100 characters"),
-    
-    body("nationalIdSector")
-      .optional()
-      .trim()
-      .isLength({ max: 100 })
-      .withMessage("National ID sector must be less than 100 characters"),
-    
-    body("gender")
-      .if(body("borrowerType").equals("individual"))
-      .isIn(Object.values(Gender))
-      .withMessage(`Gender must be one of: ${Object.values(Gender).join(", ")}`),
-    
-    body("dateOfBirth")
-      .if(body("borrowerType").equals("individual"))
-      .isISO8601()
-      .withMessage("Date of birth must be a valid date"),
-    
-    body("maritalStatus")
-      .if(body("borrowerType").equals("individual"))
-      .isIn(Object.values(MaritalStatus))
-      .withMessage(`Marital status must be one of: ${Object.values(MaritalStatus).join(", ")}`),
-    
- 
-    
-    body("email")
-      .optional()
-      .trim()
-      .isEmail()
-      .withMessage("Email must be valid"),
-    
-    body("relationshipWithNDFSP")
-      .optional()
-      .isIn(Object.values(RelationshipType))
-      .withMessage(`Relationship must be one of: ${Object.values(RelationshipType).join(", ")}`),
-    
-
-    
-    // Address validation
-    body("address")
-      .custom((value) => {
-        let addressObj = value;
-        if (typeof value === 'string') {
-          try { 
-            addressObj = JSON.parse(value); 
-          } catch (e) { 
-            throw new Error('Address must be valid JSON'); 
-          }
-        }
-        if (typeof addressObj !== 'object') {
-          throw new Error('Address must be an object');
-        }
-        return true;
-      }),
-
-    // Loan validation
-    body("purposeOfLoan")
-      .trim()
-      .isLength({ min: 5, max: 500 })
-      .withMessage("Purpose of loan must be between 5 and 500 characters"),
-    
-    body("branchName")
-      .trim()
-      .notEmpty()
-      .withMessage("Branch name is required"),
-    
-    body("businessOfficer")
-      .trim()
-      .notEmpty()
-      .withMessage("Business officer is required"),
-    
-    body("disbursedAmount")
-      .isFloat({ min: 1000 })
-      .withMessage("Loan amount must be at least 1,000 RWF"),
-
-    // ✅ NEW: Payment frequency validation
-    body("paymentFrequency")
-      .optional()
-      .isIn(Object.values(RepaymentFrequency))
-      .withMessage(`Payment frequency must be one of: ${Object.values(RepaymentFrequency).join(", ")}`),
-    
-    // Income source validation
-    body("incomeSource")
-      .optional()
-      .isString()
-      .withMessage("Income source must be a string"),
-    
-    body("otherIncomeSource")
-      .optional()
-      .trim()
-      .isLength({ max: 200 })
-      .withMessage("Other income source must be less than 200 characters")
-      .custom((value, { req }) => {
-        if (req.body.incomeSource === "other" && (!value || value.trim() === "")) {
-          throw new Error("Please specify the income source when 'Other' is selected");
-        }
-        return true;
-      }),
-    
-    body("incomeFrequency")
-      .optional()
-      .isIn(Object.values(IncomeFrequency))
-      .withMessage(`Income frequency must be one of: ${Object.values(IncomeFrequency).join(", ")}`),
-    
-    body("incomeAmount")
-      .optional()
-      .isFloat({ min: 0 })
-      .withMessage("Income amount must be a positive number"),
-
-    // Business type and economic sector
-    body("businessType")
-      .optional()
-      .isIn(Object.values(BusinessType))
-      .withMessage("Invalid business type"),
-    
-    body("economicSector")
-      .optional()
-      .isIn(Object.values(EconomicSector))
-      .withMessage("Invalid economic sector"),
-    
-    // Collateral validation
-    body("collateralType")
-      .optional()
-      .isIn(Object.values(CollateralType))
-      .withMessage("Invalid collateral type"),
-    
-    body("collateralValue")
-      .optional()
-      .isFloat({ min: 0, max: 9999999999999.99 })
-      .withMessage("Collateral value must be between 0 and 9,999,999,999,999.99"),
-    
-    // Guarantor validation
-    body("guarantorName")
-      .optional()
-      .trim()
-      .isLength({ max: 100 })
-      .withMessage("Guarantor name must be less than 100 characters"),
-    
-    body("guarantorPhone")
-      .optional()
-      .trim()
-      .isLength({ max: 20 })
-      .withMessage("Guarantor phone must be less than 20 characters"),
-
-    // ✅ NEW: Document description validations
-    body("borrowerDocumentDescriptions")
-      .optional()
-      .custom((value) => {
-        if (typeof value === 'string') {
-          try {
-            JSON.parse(value);
-            return true;
-          } catch (e) {
-            throw new Error("Borrower document descriptions must be valid JSON array");
-          }
-        }
-        return true;
-      }),
-
-    body("shareholderAdditionalDocDescriptions")
-      .optional()
-      .custom((value) => {
-        if (typeof value === 'string') {
-          try {
-            JSON.parse(value);
-            return true;
-          } catch (e) {
-            throw new Error("Shareholder additional document descriptions must be valid JSON array");
-          }
-        }
-        return true;
-      }),
-
-    body("boardMemberAdditionalDocDescriptions")
-      .optional()
-      .custom((value) => {
-        if (typeof value === 'string') {
-          try {
-            JSON.parse(value);
-            return true;
-          } catch (e) {
-            throw new Error("Board member additional document descriptions must be valid JSON array");
-          }
-        }
-        return true;
-      }),
-
-    body("guarantorDocumentDescriptions")
-      .optional()
-      .custom((value) => {
-        if (typeof value === 'string') {
-          try {
-            JSON.parse(value);
-            return true;
-          } catch (e) {
-            throw new Error("Guarantor document descriptions must be valid JSON array");
-          }
-        }
-        return true;
-      }),
-
-    body("collateralAdditionalDocDescriptions")
-      .optional()
-      .custom((value) => {
-        if (typeof value === 'string') {
-          try {
-            JSON.parse(value);
-            return true;
-          } catch (e) {
-            throw new Error("Collateral additional document descriptions must be valid JSON array");
-          }
-        }
-        return true;
-      }),
-
-    handleValidationErrors,
-  ],
-  LoanApplicationController.createLoanApplication
-);
 
 
 
@@ -1611,13 +1697,6 @@ router.post(
     param("loanId")
       .isInt({ min: 1 })
       .withMessage("Valid loan ID is required"),
-
-    body("approvalReason")
-      .trim()
-      .notEmpty()
-      .withMessage("Approval reason is required")
-      .isLength({ min: 10, max: 1000 })
-      .withMessage("Approval reason must be between 10 and 1000 characters"),
 
     handleValidationErrors,
   ],

@@ -225,13 +225,14 @@ export class LoanCollateral {
   }
 
   // Document URL Getters
-  getDocumentUrls(field: 'proofOfOwnership' | 'ownerIdentification' | 'legalDocument' | 'physicalEvidence' | 'valuationReport'): Array<{ url: string; uploadedAt: string; type: string }> {
+  getDocumentUrls(field: 'proofOfOwnership' | 'ownerIdentification' | 'legalDocument' | 'physicalEvidence' | 'valuationReport' | 'upiDocument'): Array<{ url: string; uploadedAt: string; type: string }> {
     const fieldMap = {
       proofOfOwnership: this.proofOfOwnershipUrls,
       ownerIdentification: this.ownerIdentificationUrls,
       legalDocument: this.legalDocumentUrls,
       physicalEvidence: this.physicalEvidenceUrls,
-      valuationReport: this.valuationReportUrls
+      valuationReport: this.valuationReportUrls,
+      upiDocument: this.proofOfOwnershipUrls, 
     };
 
     const urls = fieldMap[field];
@@ -262,7 +263,8 @@ export class LoanCollateral {
       ownerIdentification: 'ownerIdentificationUrls',
       legalDocument: 'legalDocumentUrls',
       physicalEvidence: 'physicalEvidenceUrls',
-      valuationReport: 'valuationReportUrls'
+      valuationReport: 'valuationReportUrls',
+      upiDocument: 'proofOfOwnershipUrls',
     };
 
     const actualField = fieldMap[field];

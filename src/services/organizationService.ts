@@ -41,11 +41,15 @@ export interface OrganizationCreationData {
   businessSector?: string
   phone?: string
   email?: string
+    branches?: Array<{ // Add this
+    title: string
+  }>
   adminUser: {
     username: string
     email: string
     password?: string // Make password optional
     phone?: string
+    branch?: string 
   }
 }
 
@@ -61,6 +65,9 @@ export interface OrganizationUpdateData {
   businessSector?: string
   phone?: string
   email?: string
+    branches?: Array<{ // Add this
+    title: string
+  }>
   categoriesData?: Array<{
     name: string
     services: Array<{
@@ -97,12 +104,13 @@ class OrganizationService {
     console.log("📋 Organization data received:", {
       name: organizationData.name,
       selectedCategories: organizationData.selectedCategories,
-      adminUser: {
-        username: organizationData.adminUser.username,
-        email: organizationData.adminUser.email,
-        phone: organizationData.adminUser.phone,
-        // Don't log password for security
-      },
+      branches: organizationData.branches, // Add this log
+    adminUser: {
+      username: organizationData.adminUser.username,
+      email: organizationData.adminUser.email,
+      phone: organizationData.adminUser.phone,
+      branch: organizationData.adminUser.branch, // Add this
+    },
     })
 
     const queryRunner = dbConnection.createQueryRunner()
@@ -161,6 +169,7 @@ class OrganizationService {
       const organization = this.organizationRepository.create({
         name: organizationData.name,
         selectedCategories: organizationData.selectedCategories,
+       branches: organizationData.branches || null,
         address: organizationData.address || null,
         tinNumber: organizationData.tinNumber || null,
         website: organizationData.website || null,
@@ -207,6 +216,7 @@ class OrganizationService {
         email: organizationData.adminUser.email,
         organizationId: savedOrganization.id,
         phone: organizationData.adminUser.phone,
+        branch: organizationData.adminUser.branch, 
       })
 
       // Create admin user directly instead of using authService to avoid transaction conflicts
@@ -226,17 +236,18 @@ class OrganizationService {
       }
 
       console.log("👤 Creating admin user entity...")
-      const adminUser = queryRunner.manager.create(User, {
-        username: organizationData.adminUser.username,
-        email: organizationData.adminUser.email,
-        hashedPassword: hashedPassword,
-        role: UserRole.CLIENT,
-        organizationId: savedOrganization.id,
-        phone: organizationData.adminUser.phone || null,
-        isActive: true,
-        isVerified: true,
-        isFirstLogin: true,
-      })
+  const adminUser = queryRunner.manager.create(User, {
+    username: organizationData.adminUser.username,
+    email: organizationData.adminUser.email,
+    hashedPassword: hashedPassword,
+    role: UserRole.CLIENT,
+    organizationId: savedOrganization.id,
+    phone: organizationData.adminUser.phone || null,
+    branch: organizationData.adminUser.branch || null, // Add this
+    isActive: true,
+    isVerified: true,
+    isFirstLogin: true,
+  })
 
       console.log("📤 Saving admin user to database...")
       const savedAdminUser = await queryRunner.manager.save(User, adminUser)
